@@ -10,19 +10,14 @@ repositories {
 }
 
 ext {
-    lwjglVersion = "3.3.6"        // 버전은 최신으로 바꿔도 됨
-    lwjglNatives = "natives-macos-arm64" // mac 기준 (Intel이면 natives-macos)
-    // 윈도우면 "natives-windows", 리눅스면 "natives-linux"
+    gdxVersion = '1.14.0'
 }
 
+
 dependencies {
-    implementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
 
-    implementation "org.lwjgl:lwjgl"
-    implementation "org.lwjgl:lwjgl-glfw"
-    implementation "org.lwjgl:lwjgl-opengl"
-
-    runtimeOnly "org.lwjgl:lwjgl::$lwjglNatives"
-    runtimeOnly "org.lwjgl:lwjgl-glfw::$lwjglNatives"
-    runtimeOnly "org.lwjgl:lwjgl-opengl::$lwjglNatives"
+    implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+    implementation 'com.google.code.gson:gson:2.10.1'
 }
