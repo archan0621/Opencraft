@@ -27,7 +27,7 @@ public class CameraController {
             int deltaX = inputHandler.getMouseDeltaX();
             int deltaY = inputHandler.getMouseDeltaY();
             float deltaYaw = deltaX * inputHandler.getMouseSensitivity();
-            float deltaPitch = -deltaY * inputHandler.getMouseSensitivity();
+            float deltaPitch = deltaY * inputHandler.getMouseSensitivity(); // MouseHandler에서 이미 반전 처리됨
             camera.addYaw(deltaYaw);
             camera.addPitch(deltaPitch);
         }
