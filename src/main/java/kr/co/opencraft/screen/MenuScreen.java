@@ -100,7 +100,8 @@ public class MenuScreen implements Screen {
 
     @Override
     public void hide() {
-
+        // 다른 화면으로 전환할 때 InputProcessor 제거
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override
