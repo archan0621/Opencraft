@@ -3,36 +3,53 @@ package kr.co.opencraft.camera;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.Vector3;
+import kr.co.opencraft.entity.Player;
 import kr.co.opencraft.input.InputHandler;
-import kr.co.opencraft.physics.CollisionDetector;
+import kr.co.opencraft.physics.PhysicsSystem;
 
 /**
- * 카메라 이동 및 회전 제어
+ * 카메라 및 플레이어 제어
+ * 
+ * 책임:
+ * - 입력 처리 (WASD, 점프, 마우스)
+ * - 이동 의도를 velocity로 변환
+ * - PhysicsSystem 호출
+ * - 카메라를 플레이어 눈 높이로 동기화
  */
 public class CameraController {
-    private FPSCamera camera;
-    private CollisionDetector collisionDetector;
-    private InputHandler inputHandler;
+    private final FPSCamera camera;
+    private final Player player;
+    private final PhysicsSystem physicsSystem;
+    private final InputHandler inputHandler;
     private float moveSpeed = 5f;
 
-    public CameraController(FPSCamera camera, CollisionDetector collisionDetector, InputHandler inputHandler) {
+    public CameraController(FPSCamera camera, Player player, PhysicsSystem physicsSystem, InputHandler inputHandler) {
         this.camera = camera;
-        this.collisionDetector = collisionDetector;
+        this.player = player;
+        this.physicsSystem = physicsSystem;
         this.inputHandler = inputHandler;
+        
+        // 카메라를 플레이어 눈 높이로 초기화
+        updateCameraPosition();
     }
 
     public void update(float delta) {
-        // 마우스 회전 처리
+        // 1. 마우스 회전 처리
         if (inputHandler.isMouseLocked()) {
             int deltaX = inputHandler.getMouseDeltaX();
             int deltaY = inputHandler.getMouseDeltaY();
             float deltaYaw = deltaX * inputHandler.getMouseSensitivity();
-            float deltaPitch = deltaY * inputHandler.getMouseSensitivity(); // MouseHandler에서 이미 반전 처리됨
+            float deltaPitch = deltaY * inputHandler.getMouseSensitivity();
             camera.addYaw(deltaYaw);
             camera.addPitch(deltaPitch);
         }
 
-        // 이동 처리
+        // 2. 점프 입력
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            physicsSystem.tryJump(player);
+        }
+
+        // 3. WASD 입력을 속도로 변환
         Vector3 direction = camera.getDirection();
         Vector3 moveDir = new Vector3();
 
@@ -41,7 +58,7 @@ public class CameraController {
         horizontalDir.y = 0;
         horizontalDir.nor();
 
-        // WASD 이동 처리
+        // WASD 이동
         if (Gdx.input.isKeyPressed(Input.Keys.W)) {
             moveDir.add(horizontalDir);
         }
@@ -61,28 +78,33 @@ public class CameraController {
             moveDir.add(right);
         }
 
-        // 수직 이동 처리
-        if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
-            moveDir.y += 1f;
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT)) {
-            moveDir.y -= 1f;
-        }
-
-        // 이동 벡터 정규화 및 적용
+        // 수평 속도 설정
         if (moveDir.len() > 0.001f) {
-            moveDir.nor();
-            moveDir.scl(moveSpeed * delta);
-            Vector3 newPosition = new Vector3(camera.getPosition()).add(moveDir);
-
-            // 충돌 체크: 새 위치가 블록과 충돌하지 않으면 이동 허용
-            if (!collisionDetector.checkCollision(newPosition)) {
-                camera.setPosition(newPosition);
-            }
+            moveDir.nor().scl(moveSpeed);
+            player.getVelocity().x = moveDir.x;
+            player.getVelocity().z = moveDir.z;
+        } else {
+            player.getVelocity().x = 0;
+            player.getVelocity().z = 0;
         }
 
-        // 카메라 업데이트
+        // 4. 물리 시스템 업데이트 (중력, 충돌, 이동)
+        physicsSystem.update(player, delta);
+        
+        // 5. 카메라 동기화
+        updateCameraPosition();
         camera.update();
+    }
+    
+    /**
+     * 카메라를 플레이어 눈 높이로 동기화
+     */
+    private void updateCameraPosition() {
+        camera.setPosition(player.getEyePosition());
+    }
+    
+    public Player getPlayer() {
+        return player;
     }
 
     public void setMoveSpeed(float moveSpeed) {

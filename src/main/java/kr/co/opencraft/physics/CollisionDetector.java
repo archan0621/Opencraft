@@ -4,10 +4,12 @@ import com.badlogic.gdx.math.Vector3;
 import kr.co.opencraft.world.World;
 
 /**
- * 충돌 감지 및 처리
+ * 충돌 감지 및 처리 (원자적 블록 기반)
+ * - 블록은 1x1x1 크기의 원자적 단위
+ * - 플레이어는 0.6x1.8x0.6 크기의 AABB
+ * - 두 AABB가 겹치면 충돌
  */
 public class CollisionDetector {
-    private static final float CAMERA_RADIUS = 0.2f;
     private static final float BLOCK_HALF_SIZE = 0.5f;
 
     private World world;
@@ -16,48 +18,59 @@ public class CollisionDetector {
         this.world = world;
     }
 
+    public World getWorld() {
+        return world;
+    }
+    
     /**
-     * 카메라 위치가 블록과 충돌하는지 확인
-     * @param position 카메라 위치
+     * 플레이어 AABB와 블록이 충돌하는지 확인
+     * @param playerFootPosition 플레이어 발 위치
+     * @param playerWidth 플레이어 너비 (0.6)
+     * @param playerHeight 플레이어 높이 (1.8)
      * @return 충돌 여부
      */
-    public boolean checkCollision(Vector3 position) {
+    public boolean checkPlayerCollision(Vector3 playerFootPosition, float playerWidth, float playerHeight) {
+        float playerHalfWidth = playerWidth / 2f;
+        
+        // 플레이어 AABB 경계
+        float playerMinX = playerFootPosition.x - playerHalfWidth;
+        float playerMaxX = playerFootPosition.x + playerHalfWidth;
+        float playerMinY = playerFootPosition.y;
+        float playerMaxY = playerFootPosition.y + playerHeight;
+        float playerMinZ = playerFootPosition.z - playerHalfWidth;
+        float playerMaxZ = playerFootPosition.z + playerHalfWidth;
+        
+        // 모든 블록과 충돌 체크
         for (Vector3 blockPos : world.getBlockPositions()) {
-            // AABB 경계 계산
-            float minX = blockPos.x - BLOCK_HALF_SIZE;
-            float maxX = blockPos.x + BLOCK_HALF_SIZE;
-            float minY = blockPos.y - BLOCK_HALF_SIZE;
-            float maxY = blockPos.y + BLOCK_HALF_SIZE;
-            float minZ = blockPos.z - BLOCK_HALF_SIZE;
-            float maxZ = blockPos.z + BLOCK_HALF_SIZE;
-
-            // X, Z 축에서 블록과 겹치는지 확인
-            boolean overlapsXZ = position.x + CAMERA_RADIUS > minX && position.x - CAMERA_RADIUS < maxX &&
-                                 position.z + CAMERA_RADIUS > minZ && position.z - CAMERA_RADIUS < maxZ;
-
-            if (!overlapsXZ) {
-                continue; // X, Z에서 겹치지 않으면 충돌 없음
-            }
-
-            // Y 축 충돌 체크
-            // 카메라가 블록 위에 있을 때: 윗면에서 충돌
-            if (position.y > maxY) {
-                if (position.y - CAMERA_RADIUS <= maxY) {
-                    return true; // 윗면과 충돌
-                }
-            }
-            // 카메라가 블록 아래에 있을 때: 밑면에서 충돌
-            else if (position.y < minY) {
-                if (position.y + CAMERA_RADIUS >= minY) {
-                    return true; // 밑면과 충돌
-                }
-            }
-            // 카메라가 블록 안에 있을 때: 항상 충돌
-            else {
-                return true; // 블록 내부 충돌
+            // 블록 AABB 경계
+            float blockMinX = blockPos.x - BLOCK_HALF_SIZE;
+            float blockMaxX = blockPos.x + BLOCK_HALF_SIZE;
+            float blockMinY = blockPos.y - BLOCK_HALF_SIZE;
+            float blockMaxY = blockPos.y + BLOCK_HALF_SIZE;
+            float blockMinZ = blockPos.z - BLOCK_HALF_SIZE;
+            float blockMaxZ = blockPos.z + BLOCK_HALF_SIZE;
+            
+            // AABB vs AABB 충돌 체크: 모든 축에서 겹치면 충돌
+            boolean xOverlap = playerMaxX > blockMinX && playerMinX < blockMaxX;
+            boolean yOverlap = playerMaxY > blockMinY && playerMinY < blockMaxY;
+            boolean zOverlap = playerMaxZ > blockMinZ && playerMinZ < blockMaxZ;
+            
+            if (xOverlap && yOverlap && zOverlap) {
+                return true; // 충돌!
             }
         }
+        
         return false; // 충돌 없음
+    }
+    
+    /**
+     * 레거시 메서드 (호환성 유지)
+     * @deprecated checkPlayerCollision 사용 권장
+     */
+    @Deprecated
+    public boolean checkCollision(Vector3 position) {
+        // 간단한 점 체크로 대체
+        return checkPlayerCollision(position, 0.01f, 0.01f);
     }
 }
 
