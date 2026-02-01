@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'application'
 }
 
 group = 'kr.co.archan'
@@ -9,15 +10,28 @@ repositories {
     mavenCentral()
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
 ext {
     gdxVersion = '1.14.0'
 }
 
+application {
+    mainClass = 'kr.co.opencraft.OpenCraftApplication'
+}
 
 dependencies {
-
+    // Voxelite 엔진 라이브러리 (JAR 파일)
+    implementation files('libs/voxelite-1.0-SNAPSHOT.jar')
+    
+    // LibGDX 의존성 (voxelite JAR에 포함되지 않으므로 직접 추가)
     implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
     implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
     runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+    
+    // Gson (voxelite에서 사용)
     implementation 'com.google.code.gson:gson:2.10.1'
 }
