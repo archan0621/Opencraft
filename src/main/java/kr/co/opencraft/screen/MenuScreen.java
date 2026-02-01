@@ -53,7 +53,7 @@ public class MenuScreen implements Screen {
         btnSingle.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent changeEvent, Actor actor) {
-                game.setScreen(new GameScreen(game));
+                game.setScreen(new LoadingScreen(game));
             }
         });
 
