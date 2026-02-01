@@ -74,7 +74,7 @@ public class InputHandler {
     private void handleBlockDestruction() {
         Vector3 selectedBlock = engine.getSelectedBlock();
         if (selectedBlock != null) {
-            engine.getWorld().removeBlock(selectedBlock);
+            engine.removeBlock(selectedBlock);
         }
     }
     
@@ -87,7 +87,7 @@ public class InputHandler {
             Vector3 placePos = hit.getPlacementPosition();
             
             if (!wouldCollideWithPlayer(placePos)) {
-                engine.getWorld().addBlock(placePos, BlockTypes.ORIGIN_STONE);
+                engine.addBlock(placePos, BlockTypes.ORIGIN_STONE);
             } else {
                 System.out.println("Cannot place block: would collide with player");
             }
