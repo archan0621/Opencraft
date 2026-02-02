@@ -7,15 +7,20 @@ import kr.co.opencraft.engine.OpenCraftGame;
 import kr.co.opencraft.world.BlockTypes;
 import kr.co.opencraft.input.InputHandler;
 import kr.co.voxelite.engine.VoxeliteEngine;
+import kr.co.opencraft.entity.OpenCraftPlayer;
+import kr.co.opencraft.camera.OpenCraftCameraController;
 
 public class GameScreen implements Screen {
     private final OpenCraftGame game;
     private VoxeliteEngine engine;
+    private OpenCraftPlayer player;
     private InputHandler inputHandler;
+    private OpenCraftCameraController cameraController;
 
-    public GameScreen(OpenCraftGame game, VoxeliteEngine engine) {
+    public GameScreen(OpenCraftGame game, VoxeliteEngine engine, OpenCraftPlayer player) {
         this.game = game;
         this.engine = engine;
+        this.player = player;
     }
 
     @Override
@@ -30,16 +35,28 @@ public class GameScreen implements Screen {
         int height = Gdx.graphics.getHeight();
         engine.initialize(width, height);
         
-        // Initialize input handler
-        inputHandler = new InputHandler(engine);
+        // Initialize input handler with OpenCraft player
+        inputHandler = new InputHandler(engine, player);
         
-        System.out.println("[GameScreen] Initialized with flat ground!");
+        // Replace engine's camera controller with OpenCraft-specific controller
+        cameraController = new OpenCraftCameraController(
+            engine.getCamera(), 
+            player, 
+            engine.getPhysics(), 
+            engine.getInput()
+        );
+        cameraController.setMoveSpeed(5f);
+        
+        // Inject custom camera controller into engine
+        engine.setCameraController(cameraController);
+        
+        System.out.println("[GameScreen] Initialized with OpenCraft camera controller!");
     }
 
     @Override
     public void render(float delta) {
         engine.update(delta);
-        inputHandler.handleInput();
+        inputHandler.handleInput(delta);  // Pass delta for timing
         engine.render();
     }
 

@@ -13,6 +13,8 @@ import kr.co.opencraft.engine.OpenCraftGame;
 import kr.co.opencraft.world.BlockTypes;
 import kr.co.opencraft.world.*;
 import kr.co.voxelite.engine.VoxeliteEngine;
+import kr.co.opencraft.entity.OpenCraftPlayer;
+import com.badlogic.gdx.math.Vector3;
 
 public class LoadingScreen implements Screen {
 
@@ -28,6 +30,7 @@ public class LoadingScreen implements Screen {
     private volatile float progress = 0f;
     private volatile boolean loadingComplete = false;
     private VoxeliteEngine engine;
+    private OpenCraftPlayer player;
     private float elapsedTime = 0f;
 
     public LoadingScreen(OpenCraftGame game) {
@@ -76,8 +79,11 @@ public class LoadingScreen implements Screen {
                 );
                 ChunkLoadPolicyAdapter policyAdapter = new ChunkLoadPolicyAdapter(loadPolicy);
                 
-                // 4. 엔진 생성 (정책 주입)
-                engine = VoxeliteEngine.builder()
+                // 4. 게임별 플레이어 생성 (fly mode 지원)
+                player = new OpenCraftPlayer(new Vector3(0f, 0.5f, 0f));
+                
+                // 5. 엔진 생성 (정책 주입 + 커스텀 플레이어)
+                engine = VoxeliteEngine.builder(player)
                     .textureAtlasPath("texture/block.png")
                     .playerStart(0f, 0.5f, 0f)
                     .playerSpeed(5f)
@@ -88,7 +94,7 @@ public class LoadingScreen implements Screen {
                     .chunkLoadPolicy(policyAdapter)
                     .initialChunkRadius(16)   // 초기 16청크 반경 생성
                     .chunkPreloadRadius(1)    // 그 중 1청크만 메모리 로드
-                    .defaultGroundBlockType(BlockTypes.WARNING_BLOCK)  // 정상 땅 블록
+                    .defaultGroundBlockType(BlockTypes.ORIGIN_STONE)  // 정상 땅 블록
                     .build();
                 
                 System.out.println("[LoadingScreen] World created with seed: " + seed);
@@ -118,7 +124,7 @@ public class LoadingScreen implements Screen {
         
         // 로딩 완료 및 최소 시간 경과 시 GameScreen으로 전환
         if (loadingComplete && elapsedTime >= MIN_LOADING_TIME) {
-            game.setScreen(new GameScreen(game, engine));
+            game.setScreen(new GameScreen(game, engine, player));
             return;
         }
 
