@@ -17,7 +17,7 @@ public class TerrainGenerator {
     private static final double NOISE_SCALE = 0.05; // 작을수록 부드러운 지형
     private static final int MIN_HEIGHT = 0;
     private static final int MAX_HEIGHT = 3;
-    private static final float BASE_Y = -1f; // 지형 시작 높이
+    private static final float BASE_Y = 0f; // 지형 시작 높이 (y=0이 바닥)
     
     public TerrainGenerator(long seed) {
         this.seed = seed;
