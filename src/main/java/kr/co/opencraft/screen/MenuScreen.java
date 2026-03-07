@@ -32,6 +32,7 @@ public class MenuScreen implements Screen {
         skin = new Skin(Gdx.files.classpath("texture/uiskin.json"));
 
         TextButton btnSingle = new TextButton("Single Player", skin);
+        TextButton btnMulti = new TextButton("Multiplayer (Local)", skin);
         TextButton btnSettings = new TextButton("Settings", skin);
         TextButton btnQuit = new TextButton("Quit Game", skin);
 
@@ -44,6 +45,8 @@ public class MenuScreen implements Screen {
 
         table.add(btnSingle).width(btnWidth).height(btnHeight).pad(10);
         table.row();
+        table.add(btnMulti).width(btnWidth).height(btnHeight).pad(10);
+        table.row();
         table.add(btnSettings).width(btnWidth).height(btnHeight).pad(10);
         table.row();
         table.add(btnQuit).width(btnWidth).height(btnHeight).pad(10);
@@ -54,6 +57,13 @@ public class MenuScreen implements Screen {
             @Override
             public void changed(ChangeEvent changeEvent, Actor actor) {
                 game.setScreen(new LoadingScreen(game));
+            }
+        });
+
+        btnMulti.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent changeEvent, Actor actor) {
+                game.setScreen(new MultiplayerLoadingScreen(game));
             }
         });
 
