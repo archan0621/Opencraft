@@ -16,6 +16,11 @@ public class ChunkLoadPolicyAdapter implements IChunkLoadPolicy {
     public boolean shouldLoadToMemory(int chunkX, int chunkZ, int playerChunkX, int playerChunkZ) {
         return policy.shouldLoadToMemory(chunkX, chunkZ, playerChunkX, playerChunkZ);
     }
+
+    @Override
+    public boolean shouldKeepLoaded(int chunkX, int chunkZ, int playerChunkX, int playerChunkZ) {
+        return policy.shouldKeepLoaded(chunkX, chunkZ, playerChunkX, playerChunkZ);
+    }
     
     @Override
     public boolean shouldPregenerate(int chunkX, int chunkZ, int playerChunkX, int playerChunkZ) {

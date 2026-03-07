@@ -2,25 +2,26 @@ package kr.co.opencraft.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.math.Vector3;
 import kr.co.opencraft.engine.OpenCraftGame;
-import kr.co.opencraft.world.BlockTypes;
 import kr.co.opencraft.input.InputHandler;
 import kr.co.voxelite.engine.VoxeliteEngine;
+import kr.co.voxelient.engine.VoxelientEngine;
 import kr.co.opencraft.entity.OpenCraftPlayer;
 import kr.co.opencraft.camera.OpenCraftCameraController;
+import kr.co.opencraft.world.BlockTextureProvider;
 import kr.co.voxelite.util.PerformanceLogger;
 
 public class GameScreen implements Screen {
     private final OpenCraftGame game;
-    private VoxeliteEngine engine;
+    private final VoxeliteEngine coreEngine;
     private OpenCraftPlayer player;
+    private VoxelientEngine clientEngine;
     private InputHandler inputHandler;
     private OpenCraftCameraController cameraController;
 
     public GameScreen(OpenCraftGame game, VoxeliteEngine engine, OpenCraftPlayer player) {
         this.game = game;
-        this.engine = engine;
+        this.coreEngine = engine;
         this.player = player;
     }
 
@@ -31,26 +32,29 @@ public class GameScreen implements Screen {
         // Remove previous InputProcessor
         Gdx.input.setInputProcessor(null);
 
-        // Initialize engine (이미 빌드된 엔진 초기화)
         int width = Gdx.graphics.getWidth();
         int height = Gdx.graphics.getHeight();
-        engine.initialize(width, height);
+        clientEngine = VoxelientEngine.builder(coreEngine)
+            .textureAtlasPath("texture/block.png")
+            .textureProvider(new BlockTextureProvider())
+            .playerSpeed(5f)
+            .cameraPitch(-20f)
+            .cameraFar(144f)
+            .build();
+        clientEngine.initialize(width, height);
+
+        inputHandler = new InputHandler(clientEngine, player);
         
-        // Initialize input handler with OpenCraft player
-        inputHandler = new InputHandler(engine, player);
-        
-        // Replace engine's camera controller with OpenCraft-specific controller
         cameraController = new OpenCraftCameraController(
-            engine.getCamera(), 
+            clientEngine.getCamera(),
             player, 
-            engine.getPhysics(), 
-            engine.getInput()
+            coreEngine.getPhysics(),
+            clientEngine.getInput()
         );
         cameraController.setMoveSpeed(5f);
-        
-        // Inject custom camera controller into engine
-        engine.setCameraController(cameraController);
-        
+
+        clientEngine.setCameraController(cameraController);
+
         System.out.println("[GameScreen] Initialized with OpenCraft camera controller!");
     }
 
@@ -58,13 +62,13 @@ public class GameScreen implements Screen {
     public void render(float delta) {
         long frameStart = PerformanceLogger.now();
         
-        engine.update(delta);
+        clientEngine.update(delta);
         long afterUpdate = PerformanceLogger.now();
         
         inputHandler.handleInput(delta);  // Pass delta for timing
         long afterInput = PerformanceLogger.now();
         
-        engine.render();
+        clientEngine.render();
         long afterRender = PerformanceLogger.now();
         
         int frame = PerformanceLogger.tickFrame();
@@ -84,13 +88,12 @@ public class GameScreen implements Screen {
                     totalMs, updateMs, inputMs, renderMs, delta, fps, usedMB, slow ? " [SLOW]" : "");
             }
         }
-        PerformanceLogger.tickFrame();
     }
 
     @Override
     public void resize(int width, int height) {
-        if (engine != null && engine.isInitialized()) {
-            engine.resize(width, height);
+        if (clientEngine != null && clientEngine.isInitialized()) {
+            clientEngine.resize(width, height);
         }
     }
 
@@ -105,8 +108,11 @@ public class GameScreen implements Screen {
 
     @Override
     public void dispose() {
-        if (engine != null) {
-            engine.dispose();
+        if (clientEngine != null) {
+            clientEngine.dispose();
+        }
+        if (coreEngine != null) {
+            coreEngine.dispose();
         }
     }
 }

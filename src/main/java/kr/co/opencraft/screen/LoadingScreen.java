@@ -15,7 +15,6 @@ import kr.co.opencraft.world.*;
 import kr.co.voxelite.engine.VoxeliteEngine;
 import kr.co.opencraft.entity.OpenCraftPlayer;
 import com.badlogic.gdx.math.Vector3;
-import kr.co.voxelite.world.BlockManager;
 
 public class LoadingScreen implements Screen {
 
@@ -75,8 +74,9 @@ public class LoadingScreen implements Screen {
                 
                 // 3. 청크 로딩 정책 (애플리케이션이 결정)
                 ChunkLoadPolicy loadPolicy = new ChunkLoadPolicy(
-                    3,  // 렌더 거리: 3청크
-                    5   // 사전 생성: 5청크 (렌더 거리 + 2)
+                    5,  // visible radius
+                    7,  // keep-loaded radius
+                    9   // pregenerate radius
                 );
                 ChunkLoadPolicyAdapter policyAdapter = new ChunkLoadPolicyAdapter(loadPolicy);
                 
@@ -84,24 +84,19 @@ public class LoadingScreen implements Screen {
                 // 임시 위치로 생성 (엔진이 지형 높이 계산 후 자동 조정)
                 player = new OpenCraftPlayer(new Vector3(0f, 100f, 0f));
                 
-                // 5. 블록 텍스처 프로바이더 생성 (면별 다른 텍스처 지원)
-                BlockTextureProvider textureProvider = new BlockTextureProvider();
-                
-                // 6. 엔진 생성 (정책 주입 + 커스텀 플레이어 + 텍스처 프로바이더)
+                // 5. 엔진 생성 (정책 주입 + 커스텀 플레이어)
                 engine = VoxeliteEngine.builder(player)
-                    .textureAtlasPath("texture/block.png")
-                    .textureProvider(textureProvider)  // ✅ 초기화 전에 설정
                     .playerStart(0f, 100f, 0f)  // 엔진이 지형 높이 계산 후 조정
-                    .playerSpeed(5f)
-                    .cameraPitch(-20f)
                     .autoCreateGround(true)
                     .worldSavePath(worldPath)
                     .chunkGenerator(generatorAdapter)
                     .chunkLoadPolicy(policyAdapter)
-                    .initialChunkRadius(5)    // 초기 5청크 반경 생성 (렌더 거리와 균형)
-                    .chunkPreloadRadius(1)    // 그 중 1청크만 메모리 로드
+                    .initialChunkRadius(9)    // pregenerate radius와 맞춤
+                    .chunkPreloadRadius(5)    // visible radius까지 먼저 메모리 로드
                     .defaultGroundBlockType(BlockTypes.GRASS)  // 잔디 블록
                     .build();
+
+                engine.initialize();
                 
                 System.out.println("[LoadingScreen] World created with seed: " + seed);
                 

@@ -6,6 +6,8 @@ Voxelite 엔진을 사용하는 Minecraft 스타일 복셀 게임입니다.
 
 OpenCraft는 Voxelite 엔진 위에 구축된 게임 애플리케이션입니다. 엔진이 제공하는 기본 기능을 활용하여 게임 규칙과 정책을 구현합니다.
 
+현재는 `voxelite`(headless core)와 `voxelient`(client) 두 모듈을 composite build로 직접 참조합니다.
+
 ## 구조
 
 - **MenuScreen**: 메인 메뉴 화면
@@ -26,7 +28,8 @@ OpenCraft는 Voxelite 엔진 위에 구축된 게임 애플리케이션입니다
 
 ## 의존성
 
-- Voxelite 엔진 (libs/voxelite-1.0-SNAPSHOT.jar)
+- Voxelite headless core (`../voxelite`)
+- Voxelient client module (`../voxelient`)
 - LibGDX 1.14.0
 - Gson 2.10.1
 

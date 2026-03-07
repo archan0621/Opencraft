@@ -3,9 +3,9 @@ package kr.co.opencraft.camera;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.Vector3;
-import kr.co.voxelite.camera.CameraController;
-import kr.co.voxelite.camera.FPSCamera;
-import kr.co.voxelite.input.InputHandler;
+import kr.co.voxelient.camera.CameraController;
+import kr.co.voxelient.camera.FPSCamera;
+import kr.co.voxelient.input.InputHandler;
 import kr.co.voxelite.physics.PhysicsSystem;
 import kr.co.opencraft.entity.OpenCraftPlayer;
 

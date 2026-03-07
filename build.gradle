@@ -24,14 +24,26 @@ application {
 }
 
 dependencies {
-    // Voxelite 엔진 라이브러리 (JAR 파일)
-    implementation files('libs/voxelite-1.0-SNAPSHOT.jar')
+    implementation "kr.co.archan:voxelite:1.0-SNAPSHOT"
+    implementation "kr.co.archan:voxelient:1.0-SNAPSHOT"
+    implementation "kr.co.archan.lab:voxeliver:1.0-SNAPSHOT"
     
-    // LibGDX 의존성 (voxelite JAR에 포함되지 않으므로 직접 추가)
     implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
     implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
     runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+    implementation 'io.netty:netty-all:4.2.10.Final'
     
-    // Gson (voxelite에서 사용)
     implementation 'com.google.code.gson:gson:2.10.1'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+tasks.withType(JavaExec) {
+    jvmArgs "-XstartOnFirstThread"
 }

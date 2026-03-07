@@ -3,7 +3,7 @@ package kr.co.opencraft.input;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Buttons;
 import com.badlogic.gdx.math.Vector3;
-import kr.co.voxelite.engine.VoxeliteEngine;
+import kr.co.voxelient.engine.VoxelientEngine;
 import kr.co.voxelite.physics.RaycastHit;
 import kr.co.opencraft.world.BlockTypes;
 import kr.co.opencraft.entity.OpenCraftPlayer;
@@ -13,7 +13,7 @@ import kr.co.opencraft.entity.OpenCraftPlayer;
  */
 public class InputHandler {
     
-    private final VoxeliteEngine engine;
+    private final VoxelientEngine engine;
     private final OpenCraftPlayer player;
     
     // Double-tap detection for fly mode toggle
@@ -21,7 +21,7 @@ public class InputHandler {
     private float lastSpaceTapTime = -1f;
     private float timeSinceLastTap = 0f;
     
-    public InputHandler(VoxeliteEngine engine, OpenCraftPlayer player) {
+    public InputHandler(VoxelientEngine engine, OpenCraftPlayer player) {
         this.engine = engine;
         this.player = player;
     }
