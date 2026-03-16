@@ -102,7 +102,7 @@ public class BlockTextures {
         
         // BEDROCK (17) - all faces same
         register(BlockTypes.BEDROCK, new FaceTextures(17));
-        
+
         // Example: Grass block (top/sides/bottom different)
         // register(BlockTypes.GRASS, new FaceTextures(
         //     0,  // top: grass texture

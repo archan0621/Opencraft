@@ -151,26 +151,6 @@ public class InputHandler {
      * Check if a block at the given position would collide with the player
      */
     private boolean wouldCollideWithPlayer(Vector3 blockPos) {
-        Vector3 playerPos = player.getPosition();
-        
-        // Player AABB (width 0.6, height 1.8)
-        float playerMinX = playerPos.x - 0.3f;
-        float playerMaxX = playerPos.x + 0.3f;
-        float playerMinY = playerPos.y;
-        float playerMaxY = playerPos.y + 1.8f;
-        float playerMinZ = playerPos.z - 0.3f;
-        float playerMaxZ = playerPos.z + 0.3f;
-        
-        // Block AABB (1x1x1 block, center at blockPos)
-        float blockMinX = blockPos.x - 0.5f;
-        float blockMaxX = blockPos.x + 0.5f;
-        float blockMinY = blockPos.y - 0.5f;
-        float blockMaxY = blockPos.y + 0.5f;
-        float blockMinZ = blockPos.z - 0.5f;
-        float blockMaxZ = blockPos.z + 0.5f;
-        
-        return !(playerMaxX <= blockMinX || playerMinX >= blockMaxX ||
-                 playerMaxY <= blockMinY || playerMinY >= blockMaxY ||
-                 playerMaxZ <= blockMinZ || playerMinZ >= blockMaxZ);
+        return player.collidesWithBlock(blockPos);
     }
 }

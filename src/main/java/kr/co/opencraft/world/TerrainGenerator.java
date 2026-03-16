@@ -1,388 +1,411 @@
 package kr.co.opencraft.world;
 
+import kr.co.opencraft.world.noise.OctaveNoise;
 import kr.co.voxelite.world.Chunk;
-import kr.co.voxelite.world.SimplexNoise;
+
+import java.util.Random;
 
 /**
- * Multi-noise terrain generation:
- * - continentalness for large terrain regions
- * - fBm for large + medium + small landforms
- * - ridge noise for mountain chains and valleys
- * - erosion for natural attenuation
- * - plateau shaping and summit smoothing
+ * Minecraft 1.12 overworld-style terrain generation without water or structures.
+ * The flow mirrors the vanilla generator at a high level:
+ * biome blend -> coarse density field -> chunk fill -> surface replacement.
  */
 public class TerrainGenerator {
-    private static final TerrainConfig CONFIG = TerrainConfig.createDefault();
+    private static final int CHUNK_HEIGHT = 256;
+    private static final int COARSE_GRID_SIZE = 5;
+    private static final int BIOME_GENERATION_GRID_SIZE = 10;
+    private static final int COARSE_HEIGHT_SAMPLES = 33;
+    private static final int COARSE_HORIZONTAL_STEP = 4;
+    private static final int COARSE_VERTICAL_STEP = 8;
+    private static final int SEA_LEVEL = 63;
+
+    private static final double COORDINATE_SCALE = 684.412;
+    private static final double HEIGHT_SCALE = 684.412;
+    private static final double UPPER_LIMIT_SCALE = 512.0;
+    private static final double LOWER_LIMIT_SCALE = 512.0;
+    private static final double DEPTH_NOISE_SCALE_X = 200.0;
+    private static final double DEPTH_NOISE_SCALE_Z = 200.0;
+    private static final double DEPTH_NOISE_SCALE_EXPONENT = 0.5;
+    private static final double MAIN_NOISE_SCALE_X = 80.0;
+    private static final double MAIN_NOISE_SCALE_Y = 160.0;
+    private static final double MAIN_NOISE_SCALE_Z = 80.0;
+    private static final double BASE_SIZE = 8.5;
+    private static final double STRETCH_Y = 12.0;
+    private static final double BIOME_DEPTH_WEIGHT = 1.0;
+    private static final double BIOME_SCALE_WEIGHT = 1.0;
+    private static final double BIOME_DEPTH_OFFSET = 0.0;
+    private static final double BIOME_SCALE_OFFSET = 0.0;
+    private static final double SURFACE_NOISE_SCALE = 0.0625;
 
     private final long seed;
-    private final SimplexNoise noise;
+    private final BiomeGenerator biomeGenerator;
+    private final OctaveNoise minLimitNoise;
+    private final OctaveNoise maxLimitNoise;
+    private final OctaveNoise mainNoise;
+    private final OctaveNoise surfaceNoise;
+    private final OctaveNoise depthNoise;
+    private final double[] heightMap;
+    private final float[] biomeWeights;
+    private double[] mainNoiseRegion;
+    private double[] minLimitRegion;
+    private double[] maxLimitRegion;
+    private double[] depthRegion;
+    private double[] surfaceDepthBuffer;
 
     public TerrainGenerator(long seed) {
         this.seed = seed;
-        this.noise = new SimplexNoise(seed);
+        this.biomeGenerator = new BiomeGenerator(seed);
+        this.heightMap = new double[COARSE_GRID_SIZE * COARSE_HEIGHT_SAMPLES * COARSE_GRID_SIZE];
+        this.biomeWeights = new float[25];
+
+        Random random = new Random(seed);
+        this.minLimitNoise = new OctaveNoise(random, 16);
+        this.maxLimitNoise = new OctaveNoise(random, 16);
+        this.mainNoise = new OctaveNoise(random, 8);
+        this.surfaceNoise = new OctaveNoise(random, 4);
+        this.depthNoise = new OctaveNoise(random, 16);
+
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                float weight = 10.0F / (float) Math.sqrt(dx * dx + dz * dz + 0.2F);
+                biomeWeights[dx + 2 + (dz + 2) * 5] = weight;
+            }
+        }
     }
 
-    /**
-     * Chunk generation remains column-based for chunk compatibility.
-     */
     public void generateTerrain(Chunk chunk, int defaultBlockType) {
-        long t0 = System.currentTimeMillis();
         int chunkX = chunk.getCoord().x;
         int chunkZ = chunk.getCoord().z;
+        Biome[] biomesForGeneration = sampleBiomesForGeneration(chunkX, chunkZ);
+
+        setBlocksInChunk(chunk, chunkX, chunkZ, biomesForGeneration);
+        replaceBiomeBlocks(chunk, chunkX, chunkZ);
+        chunk.markAsGenerated();
+    }
+
+    private void setBlocksInChunk(Chunk chunk, int chunkX, int chunkZ, Biome[] biomesForGeneration) {
+        generateHeightMap(chunkX * COARSE_HORIZONTAL_STEP, chunkZ * COARSE_HORIZONTAL_STEP, biomesForGeneration);
+
+        for (int gridX = 0; gridX < 4; gridX++) {
+            int rowStart = gridX * 5;
+            int rowEnd = (gridX + 1) * 5;
+
+            for (int gridZ = 0; gridZ < 4; gridZ++) {
+                int index000 = (rowStart + gridZ) * COARSE_HEIGHT_SAMPLES;
+                int index001 = (rowStart + gridZ + 1) * COARSE_HEIGHT_SAMPLES;
+                int index100 = (rowEnd + gridZ) * COARSE_HEIGHT_SAMPLES;
+                int index101 = (rowEnd + gridZ + 1) * COARSE_HEIGHT_SAMPLES;
+
+                for (int gridY = 0; gridY < 32; gridY++) {
+                    double density000 = heightMap[index000 + gridY];
+                    double density001 = heightMap[index001 + gridY];
+                    double density100 = heightMap[index100 + gridY];
+                    double density101 = heightMap[index101 + gridY];
+                    double densityStep000 = (heightMap[index000 + gridY + 1] - density000) * 0.125D;
+                    double densityStep001 = (heightMap[index001 + gridY + 1] - density001) * 0.125D;
+                    double densityStep100 = (heightMap[index100 + gridY + 1] - density100) * 0.125D;
+                    double densityStep101 = (heightMap[index101 + gridY + 1] - density101) * 0.125D;
+
+                    for (int subY = 0; subY < COARSE_VERTICAL_STEP; subY++) {
+                        double densityX0 = density000;
+                        double densityX1 = density001;
+                        double densityXStep0 = (density100 - density000) * 0.25D;
+                        double densityXStep1 = (density101 - density001) * 0.25D;
+
+                        for (int subX = 0; subX < COARSE_HORIZONTAL_STEP; subX++) {
+                            double densityZStep = (densityX1 - densityX0) * 0.25D;
+                            double density = densityX0 - densityZStep;
+
+                            for (int subZ = 0; subZ < COARSE_HORIZONTAL_STEP; subZ++) {
+                                density += densityZStep;
+                                if (density > 0.0D) {
+                                    chunk.addBlockLocal(
+                                        gridX * COARSE_HORIZONTAL_STEP + subX,
+                                        gridY * COARSE_VERTICAL_STEP + subY,
+                                        gridZ * COARSE_HORIZONTAL_STEP + subZ,
+                                        BlockTypes.MY_STONE
+                                    );
+                                }
+                            }
+
+                            densityX0 += densityXStep0;
+                            densityX1 += densityXStep1;
+                        }
+
+                        density000 += densityStep000;
+                        density001 += densityStep001;
+                        density100 += densityStep100;
+                        density101 += densityStep101;
+                    }
+                }
+            }
+        }
+    }
+
+    private void replaceBiomeBlocks(Chunk chunk, int chunkX, int chunkZ) {
+        surfaceDepthBuffer = surfaceNoise.generateNoise(
+            surfaceDepthBuffer,
+            chunkX * Chunk.CHUNK_SIZE,
+            chunkZ * Chunk.CHUNK_SIZE,
+            Chunk.CHUNK_SIZE,
+            Chunk.CHUNK_SIZE,
+            SURFACE_NOISE_SCALE,
+            SURFACE_NOISE_SCALE,
+            1.0D
+        );
 
         for (int localX = 0; localX < Chunk.CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < Chunk.CHUNK_SIZE; localZ++) {
                 int worldX = chunkX * Chunk.CHUNK_SIZE + localX;
                 int worldZ = chunkZ * Chunk.CHUNK_SIZE + localZ;
-                TerrainSample sample = sampleTerrain(worldX, worldZ);
-                Biome biome = sample.biome;
+                Biome biome = biomeGenerator.getBiomeAt(worldX, worldZ);
+                double surfaceValue = surfaceDepthBuffer[localZ + localX * Chunk.CHUNK_SIZE];
+                replaceSurfaceColumn(chunk, localX, localZ, worldX, worldZ, biome, surfaceValue);
+            }
+        }
+    }
 
-                chunk.addBlockLocal(localX, 0, localZ, BlockTypes.BEDROCK);
-                for (int y = 1; y <= 4; y++) {
+    private void replaceSurfaceColumn(
+        Chunk chunk,
+        int localX,
+        int localZ,
+        int worldX,
+        int worldZ,
+        Biome biome,
+        double surfaceValue
+    ) {
+        int surfaceDepth = Math.max(1, (int) (surfaceValue / 3.0D + 3.0D + columnRandom(worldX, worldZ, 0) * 0.25D));
+        int remainingDepth = -1;
+
+        for (int y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+            if (y <= bedrockLevel(worldX, worldZ, y)) {
+                chunk.addBlockLocal(localX, y, localZ, BlockTypes.BEDROCK);
+                continue;
+            }
+
+            Chunk.BlockData current = chunk.getBlock(localX, y, localZ);
+            if (current == null) {
+                remainingDepth = -1;
+                continue;
+            }
+
+            if (current.blockType != BlockTypes.MY_STONE) {
+                continue;
+            }
+
+            if (remainingDepth == -1) {
+                remainingDepth = surfaceDepth;
+                if (surfaceDepth <= 0) {
                     chunk.addBlockLocal(localX, y, localZ, biome.stoneBlock);
+                } else if (y >= stoneExposureHeight(biome)) {
+                    chunk.addBlockLocal(localX, y, localZ, biome.stoneBlock);
+                } else {
+                    chunk.addBlockLocal(localX, y, localZ, biome.surfaceBlock);
                 }
+            } else if (remainingDepth > 0) {
+                chunk.addBlockLocal(localX, y, localZ, biome.subsurfaceBlock);
+                remainingDepth--;
+            } else {
+                chunk.addBlockLocal(localX, y, localZ, biome.stoneBlock);
+            }
+        }
+    }
 
-                for (int y = 5; y <= sample.height; y++) {
-                    if (y == sample.height) {
-                        chunk.addBlockLocal(localX, y, localZ, biome.surfaceBlock);
-                    } else if (y >= sample.height - 3) {
-                        chunk.addBlockLocal(localX, y, localZ, biome.subsurfaceBlock);
-                    } else {
-                        chunk.addBlockLocal(localX, y, localZ, biome.stoneBlock);
+    private void generateHeightMap(int coarseX, int coarseZ, Biome[] biomesForGeneration) {
+        depthRegion = depthNoise.generateNoise(
+            depthRegion,
+            coarseX,
+            coarseZ,
+            COARSE_GRID_SIZE,
+            COARSE_GRID_SIZE,
+            DEPTH_NOISE_SCALE_X,
+            DEPTH_NOISE_SCALE_Z,
+            DEPTH_NOISE_SCALE_EXPONENT
+        );
+        mainNoiseRegion = mainNoise.generateNoise(
+            mainNoiseRegion,
+            coarseX,
+            0,
+            coarseZ,
+            COARSE_GRID_SIZE,
+            COARSE_HEIGHT_SAMPLES,
+            COARSE_GRID_SIZE,
+            COORDINATE_SCALE / MAIN_NOISE_SCALE_X,
+            HEIGHT_SCALE / MAIN_NOISE_SCALE_Y,
+            COORDINATE_SCALE / MAIN_NOISE_SCALE_Z
+        );
+        minLimitRegion = minLimitNoise.generateNoise(
+            minLimitRegion,
+            coarseX,
+            0,
+            coarseZ,
+            COARSE_GRID_SIZE,
+            COARSE_HEIGHT_SAMPLES,
+            COARSE_GRID_SIZE,
+            COORDINATE_SCALE,
+            HEIGHT_SCALE,
+            COORDINATE_SCALE
+        );
+        maxLimitRegion = maxLimitNoise.generateNoise(
+            maxLimitRegion,
+            coarseX,
+            0,
+            coarseZ,
+            COARSE_GRID_SIZE,
+            COARSE_HEIGHT_SAMPLES,
+            COARSE_GRID_SIZE,
+            COORDINATE_SCALE,
+            HEIGHT_SCALE,
+            COORDINATE_SCALE
+        );
+
+        int noiseIndex = 0;
+        int depthIndex = 0;
+
+        for (int gridX = 0; gridX < COARSE_GRID_SIZE; gridX++) {
+            for (int gridZ = 0; gridZ < COARSE_GRID_SIZE; gridZ++) {
+                BiomeBlend blend = blendBiomes(gridX, gridZ, biomesForGeneration);
+                double depthNoiseValue = transformDepthNoise(depthRegion[depthIndex++]);
+                double baseHeight = blend.baseHeight + depthNoiseValue * 0.35D;
+                double heightVariation = blend.heightVariation;
+                baseHeight = baseHeight * BASE_SIZE / 8.0D;
+                double centerHeight = BASE_SIZE + baseHeight * 4.0D;
+
+                for (int sampleY = 0; sampleY < COARSE_HEIGHT_SAMPLES; sampleY++) {
+                    double biomeOffset = ((sampleY - centerHeight) * STRETCH_Y * 128.0D / CHUNK_HEIGHT) / heightVariation;
+                    if (biomeOffset < 0.0D) {
+                        biomeOffset *= 4.0D;
                     }
+
+                    double minDensity = minLimitRegion[noiseIndex] / LOWER_LIMIT_SCALE;
+                    double maxDensity = maxLimitRegion[noiseIndex] / UPPER_LIMIT_SCALE;
+                    double mainDensity = clamp01((mainNoiseRegion[noiseIndex] / 10.0D + 1.0D) / 2.0D);
+                    double density = lerp(minDensity, maxDensity, mainDensity) - biomeOffset;
+
+                    if (sampleY > 29) {
+                        double topFade = (sampleY - 29) / 3.0D;
+                        density = density * (1.0D - topFade) + -10.0D * topFade;
+                    }
+
+                    heightMap[noiseIndex] = density;
+                    noiseIndex++;
                 }
             }
         }
-
-        chunk.markAsGenerated();
-        long ms = System.currentTimeMillis() - t0;
-        if (ms > 20) {
-            System.out.printf("[PERF][TerrainGenerator] chunk(%d,%d): %d ms%n", chunkX, chunkZ, ms);
-        }
     }
 
-    private TerrainSample sampleTerrain(int worldX, int worldZ) {
-        double warpX = sampleFbm(worldX + 7000.0, worldZ - 7000.0, CONFIG.warpLayer) * CONFIG.warpStrength;
-        double warpZ = sampleFbm(worldX - 7000.0, worldZ + 7000.0, CONFIG.warpLayer) * CONFIG.warpStrength;
-        double sampleX = worldX + warpX;
-        double sampleZ = worldZ + warpZ;
+    private BiomeBlend blendBiomes(int gridX, int gridZ, Biome[] biomesForGeneration) {
+        float heightVariation = 0.0F;
+        float baseHeight = 0.0F;
+        float weightSum = 0.0F;
+        Biome center = biomesForGeneration[gridX + 2 + (gridZ + 2) * BIOME_GENERATION_GRID_SIZE];
 
-        double continent = sampleFbm(sampleX, sampleZ, CONFIG.continentLayer);
-        double baseTerrain = sampleLayer(sampleX, sampleZ, CONFIG.baseLargeLayer)
-            + sampleLayer(sampleX, sampleZ, CONFIG.baseMediumLayer)
-            + sampleLayer(sampleX, sampleZ, CONFIG.baseDetailLayer);
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                Biome nearby = biomesForGeneration[gridX + dx + 2 + (gridZ + dz + 2) * BIOME_GENERATION_GRID_SIZE];
+                float nearbyBase = (float) (BIOME_DEPTH_OFFSET + nearby.baseHeight * BIOME_DEPTH_WEIGHT);
+                float nearbyScale = (float) (BIOME_SCALE_OFFSET + nearby.heightVariation * BIOME_SCALE_WEIGHT);
+                float weight = biomeWeights[dx + 2 + (dz + 2) * 5] / (nearbyBase + 2.0F);
 
-        double ridgePrimary = sampleRidged(sampleX + 1800.0, sampleZ - 1800.0, CONFIG.primaryRidgeLayer);
-        double ridgeSecondary = sampleRidged(sampleX - 2600.0, sampleZ + 2600.0, CONFIG.secondaryRidgeLayer);
-        double ridge = Math.max(
-            smoothstep(Math.pow(clamp01(ridgePrimary), 1.15)),
-            smoothstep(Math.pow(clamp01(ridgeSecondary), 1.35)) * 0.84
-        );
+                if (nearby.baseHeight > center.baseHeight) {
+                    weight /= 2.0F;
+                }
 
-        double erosion = normalized(sampleFbm(sampleX + 3200.0, sampleZ - 3200.0, CONFIG.erosionLayer));
-        double erosionFactor = lerp(CONFIG.erosionMinMultiplier, CONFIG.erosionMaxMultiplier, erosion);
-
-        double plateauNoise = normalized(sampleFbm(sampleX - 4800.0, sampleZ + 4800.0, CONFIG.plateauLayer));
-        double landBlend = smoothstepRange(continent, CONFIG.oceanStart, CONFIG.oceanEnd);
-        double foothillWeight = smoothstepRange(continent, CONFIG.plainsCenter, CONFIG.hillsCenter);
-        double mountainWeight = smoothstepRange(continent, CONFIG.mountainsStart, CONFIG.mountainsEnd);
-        double oceanHeight = CONFIG.oceanFloorHeight + baseTerrain * 0.18;
-        double plainsHeight = CONFIG.plainsBaseHeight + baseTerrain * 0.12 + erosion * 2.0;
-        double hillsHeight = CONFIG.hillsBaseHeight + baseTerrain * 0.20 + ridge * 5.0 * erosionFactor;
-        double landHeight = lerp(plainsHeight, hillsHeight, foothillWeight);
-
-        double mountainBase = landHeight + mountainWeight * (CONFIG.mountainBaseHeight - CONFIG.hillsBaseHeight);
-        double ridgeMountains = ridge * CONFIG.primaryRidgeAmplitude + ridgeSecondary * CONFIG.secondaryRidgeAmplitude;
-        double mountainUplift = ridgeMountains * Math.pow(mountainWeight, 1.65) * erosionFactor;
-        double mountainHeight = mountainBase + mountainUplift;
-
-        double plateauMask = mountainWeight
-            * smoothstepRange(plateauNoise, CONFIG.plateauStart, CONFIG.plateauEnd)
-            * smoothstepRange(ridge, 0.68, 0.90);
-        double plateauTarget = roundToStep(mountainHeight, CONFIG.plateauStepHeight);
-        mountainHeight = lerp(mountainHeight, plateauTarget, plateauMask * CONFIG.plateauStrength);
-
-        double summitSmoothMask = mountainWeight * smoothstepRange(ridge, 0.72, 0.94);
-        double smoothedSummit = mountainBase + ridgeMountains * 0.78;
-        mountainHeight = lerp(mountainHeight, smoothedSummit, summitSmoothMask * CONFIG.summitSmoothingStrength);
-
-        double valleyCarve = (1.0 - ridge) * (1.0 - erosion) * Math.pow(mountainWeight, 1.25);
-        mountainHeight -= valleyCarve * CONFIG.valleyDepth;
-
-        double terrainHeight = lerp(landHeight, mountainHeight, mountainWeight);
-        double finalHeight = lerp(oceanHeight, terrainHeight, landBlend);
-
-        int height = clampHeight((int) Math.round(finalHeight));
-        return new TerrainSample(height, selectBiome(landBlend, foothillWeight, mountainWeight, erosion));
-    }
-
-    private Biome selectBiome(double landBlend, double foothillWeight, double mountainWeight, double erosion) {
-        if (mountainWeight > 0.42) {
-            return Biome.MOUNTAIN;
-        }
-        if (foothillWeight > 0.45) {
-            return Biome.HILLS;
-        }
-        if (landBlend < 0.35) {
-            return Biome.PLAINS;
-        }
-        return erosion > 0.56 ? Biome.FOREST : Biome.PLAINS;
-    }
-
-    private int clampHeight(int height) {
-        return Math.max(CONFIG.minTerrainHeight, Math.min(CONFIG.maxTerrainHeight, height));
-    }
-
-    private double sampleLayer(double x, double z, NoiseLayer layer) {
-        return sampleFbm(x, z, layer) * layer.amplitude;
-    }
-
-    private double sampleFbm(double x, double z, NoiseLayer layer) {
-        double total = 0.0;
-        double frequency = layer.scale;
-        double amplitude = 1.0;
-        double maxValue = 0.0;
-
-        for (int i = 0; i < layer.octaves; i++) {
-            total += noise.noise(x * frequency, z * frequency) * amplitude;
-            maxValue += amplitude;
-            amplitude *= layer.persistence;
-            frequency *= layer.lacunarity;
+                heightVariation += nearbyScale * weight;
+                baseHeight += nearbyBase * weight;
+                weightSum += weight;
+            }
         }
 
-        return maxValue == 0.0 ? 0.0 : total / maxValue;
+        heightVariation = heightVariation / weightSum;
+        baseHeight = baseHeight / weightSum;
+        heightVariation = heightVariation * 0.9F + 0.1F;
+        baseHeight = (baseHeight * 4.0F - 1.0F) / 8.0F;
+        return new BiomeBlend(baseHeight, Math.max(0.1F, heightVariation));
     }
 
-    private double sampleRidged(double x, double z, NoiseLayer layer) {
-        double total = 0.0;
-        double frequency = layer.scale;
-        double amplitude = 1.0;
-        double maxValue = 0.0;
+    private Biome[] sampleBiomesForGeneration(int chunkX, int chunkZ) {
+        Biome[] biomes = new Biome[BIOME_GENERATION_GRID_SIZE * BIOME_GENERATION_GRID_SIZE];
+        int coarseStartX = chunkX * COARSE_HORIZONTAL_STEP - 2;
+        int coarseStartZ = chunkZ * COARSE_HORIZONTAL_STEP - 2;
 
-        for (int i = 0; i < layer.octaves; i++) {
-            double ridge = 1.0 - Math.abs(noise.noise(x * frequency, z * frequency));
-            ridge *= ridge;
-            total += ridge * amplitude;
-            maxValue += amplitude;
-            amplitude *= layer.persistence;
-            frequency *= layer.lacunarity;
+        for (int gridX = 0; gridX < BIOME_GENERATION_GRID_SIZE; gridX++) {
+            for (int gridZ = 0; gridZ < BIOME_GENERATION_GRID_SIZE; gridZ++) {
+                int worldX = (coarseStartX + gridX) * COARSE_HORIZONTAL_STEP;
+                int worldZ = (coarseStartZ + gridZ) * COARSE_HORIZONTAL_STEP;
+                biomes[gridX + gridZ * BIOME_GENERATION_GRID_SIZE] = biomeGenerator.getBiomeAt(worldX, worldZ);
+            }
         }
 
-        return maxValue == 0.0 ? 0.0 : total / maxValue;
+        return biomes;
     }
 
-    private double normalized(double value) {
-        return clamp01((value + 1.0) * 0.5);
+    private double transformDepthNoise(double rawDepthNoise) {
+        double depth = rawDepthNoise / 8000.0D;
+        if (depth < 0.0D) {
+            depth = -depth * 0.3D;
+        }
+
+        depth = depth * 3.0D - 2.0D;
+        if (depth < 0.0D) {
+            depth /= 2.0D;
+            depth = Math.max(depth, -1.0D);
+            depth /= 1.4D;
+            depth /= 2.0D;
+        } else {
+            depth = Math.min(depth, 1.0D);
+            depth /= 8.0D;
+        }
+
+        return depth;
+    }
+
+    private int stoneExposureHeight(Biome biome) {
+        return switch (biome) {
+            case MOUNTAIN -> SEA_LEVEL + 22;
+            case HILLS -> SEA_LEVEL + 34;
+            default -> Integer.MAX_VALUE;
+        };
+    }
+
+    private int bedrockLevel(int worldX, int worldZ, int y) {
+        if (y == 0) {
+            return 0;
+        }
+        return (int) Math.floor(columnRandom(worldX, worldZ, y + 37) * 5.0D);
+    }
+
+    private double columnRandom(int worldX, int worldZ, int salt) {
+        long hash = seed;
+        hash ^= worldX * 341873128712L;
+        hash ^= worldZ * 132897987541L;
+        hash ^= salt * 42317861L;
+        hash = (hash ^ (hash >>> 33)) * 0xff51afd7ed558ccdL;
+        hash = (hash ^ (hash >>> 33)) * 0xc4ceb9fe1a85ec53L;
+        hash ^= hash >>> 33;
+        long positive = hash & Long.MAX_VALUE;
+        return positive / (double) Long.MAX_VALUE;
     }
 
     private double clamp01(double value) {
-        return Math.max(0.0, Math.min(1.0, value));
+        return Math.max(0.0D, Math.min(1.0D, value));
     }
 
-    private double lerp(double a, double b, double t) {
-        return a + (b - a) * clamp01(t);
-    }
-
-    private double smoothstep(double t) {
-        double clamped = clamp01(t);
-        return clamped * clamped * (3.0 - 2.0 * clamped);
-    }
-
-    private double smoothstepRange(double value, double edge0, double edge1) {
-        if (edge0 == edge1) {
-            return value < edge0 ? 0.0 : 1.0;
-        }
-        return smoothstep((value - edge0) / (edge1 - edge0));
-    }
-
-    private double smoothBand(double value, double start, double center, double end) {
-        double rise = smoothstepRange(value, start, center);
-        double fall = 1.0 - smoothstepRange(value, center, end);
-        return clamp01(Math.min(rise, fall));
-    }
-
-    private double roundToStep(double value, double step) {
-        if (step <= 0.0) {
-            return value;
-        }
-        return Math.round(value / step) * step;
+    private double lerp(double start, double end, double alpha) {
+        return start + (end - start) * alpha;
     }
 
     public long getSeed() {
         return seed;
     }
 
-    private static final class TerrainSample {
-        private final int height;
-        private final Biome biome;
+    private static final class BiomeBlend {
+        private final float baseHeight;
+        private final float heightVariation;
 
-        private TerrainSample(int height, Biome biome) {
-            this.height = height;
-            this.biome = biome;
-        }
-    }
-
-    private static final class NoiseLayer {
-        private final double scale;
-        private final double amplitude;
-        private final int octaves;
-        private final double persistence;
-        private final double lacunarity;
-
-        private NoiseLayer(double scale, double amplitude, int octaves, double persistence, double lacunarity) {
-            this.scale = scale;
-            this.amplitude = amplitude;
-            this.octaves = octaves;
-            this.persistence = persistence;
-            this.lacunarity = lacunarity;
-        }
-    }
-
-    private static final class TerrainConfig {
-        private final NoiseLayer warpLayer;
-        private final double warpStrength;
-        private final NoiseLayer continentLayer;
-        private final NoiseLayer baseLargeLayer;
-        private final NoiseLayer baseMediumLayer;
-        private final NoiseLayer baseDetailLayer;
-        private final NoiseLayer primaryRidgeLayer;
-        private final NoiseLayer secondaryRidgeLayer;
-        private final NoiseLayer erosionLayer;
-        private final NoiseLayer plateauLayer;
-        private final double erosionMinMultiplier;
-        private final double erosionMaxMultiplier;
-        private final double oceanStart;
-        private final double oceanEnd;
-        private final double plainsStart;
-        private final double plainsCenter;
-        private final double hillsStart;
-        private final double hillsCenter;
-        private final double mountainsStart;
-        private final double mountainsEnd;
-        private final int minTerrainHeight;
-        private final int maxTerrainHeight;
-        private final double oceanFloorHeight;
-        private final double plainsBaseHeight;
-        private final double hillsBaseHeight;
-        private final double mountainBaseHeight;
-        private final double primaryRidgeAmplitude;
-        private final double secondaryRidgeAmplitude;
-        private final double valleyDepth;
-        private final double plateauStart;
-        private final double plateauEnd;
-        private final double plateauStepHeight;
-        private final double plateauStrength;
-        private final double summitSmoothingStrength;
-
-        private TerrainConfig(
-            NoiseLayer warpLayer,
-            double warpStrength,
-            NoiseLayer continentLayer,
-            NoiseLayer baseLargeLayer,
-            NoiseLayer baseMediumLayer,
-            NoiseLayer baseDetailLayer,
-            NoiseLayer primaryRidgeLayer,
-            NoiseLayer secondaryRidgeLayer,
-            NoiseLayer erosionLayer,
-            NoiseLayer plateauLayer,
-            double erosionMinMultiplier,
-            double erosionMaxMultiplier,
-            double oceanStart,
-            double oceanEnd,
-            double plainsStart,
-            double plainsCenter,
-            double hillsStart,
-            double hillsCenter,
-            double mountainsStart,
-            double mountainsEnd,
-            int minTerrainHeight,
-            int maxTerrainHeight,
-            double oceanFloorHeight,
-            double plainsBaseHeight,
-            double hillsBaseHeight,
-            double mountainBaseHeight,
-            double primaryRidgeAmplitude,
-            double secondaryRidgeAmplitude,
-            double valleyDepth,
-            double plateauStart,
-            double plateauEnd,
-            double plateauStepHeight,
-            double plateauStrength,
-            double summitSmoothingStrength
-        ) {
-            this.warpLayer = warpLayer;
-            this.warpStrength = warpStrength;
-            this.continentLayer = continentLayer;
-            this.baseLargeLayer = baseLargeLayer;
-            this.baseMediumLayer = baseMediumLayer;
-            this.baseDetailLayer = baseDetailLayer;
-            this.primaryRidgeLayer = primaryRidgeLayer;
-            this.secondaryRidgeLayer = secondaryRidgeLayer;
-            this.erosionLayer = erosionLayer;
-            this.plateauLayer = plateauLayer;
-            this.erosionMinMultiplier = erosionMinMultiplier;
-            this.erosionMaxMultiplier = erosionMaxMultiplier;
-            this.oceanStart = oceanStart;
-            this.oceanEnd = oceanEnd;
-            this.plainsStart = plainsStart;
-            this.plainsCenter = plainsCenter;
-            this.hillsStart = hillsStart;
-            this.hillsCenter = hillsCenter;
-            this.mountainsStart = mountainsStart;
-            this.mountainsEnd = mountainsEnd;
-            this.minTerrainHeight = minTerrainHeight;
-            this.maxTerrainHeight = maxTerrainHeight;
-            this.oceanFloorHeight = oceanFloorHeight;
-            this.plainsBaseHeight = plainsBaseHeight;
-            this.hillsBaseHeight = hillsBaseHeight;
-            this.mountainBaseHeight = mountainBaseHeight;
-            this.primaryRidgeAmplitude = primaryRidgeAmplitude;
-            this.secondaryRidgeAmplitude = secondaryRidgeAmplitude;
-            this.valleyDepth = valleyDepth;
-            this.plateauStart = plateauStart;
-            this.plateauEnd = plateauEnd;
-            this.plateauStepHeight = plateauStepHeight;
-            this.plateauStrength = plateauStrength;
-            this.summitSmoothingStrength = summitSmoothingStrength;
-        }
-
-        private static TerrainConfig createDefault() {
-            return new TerrainConfig(
-                new NoiseLayer(0.0018, 1.0, 2, 0.5, 2.0),
-                16.0,
-                new NoiseLayer(0.0010, 1.0, 3, 0.5, 2.0),
-                new NoiseLayer(0.010, 40.0, 3, 0.5, 2.0),
-                new NoiseLayer(0.020, 20.0, 2, 0.5, 2.0),
-                new NoiseLayer(0.040, 10.0, 2, 0.45, 2.0),
-                new NoiseLayer(0.0060, 1.0, 4, 0.55, 2.0),
-                new NoiseLayer(0.0125, 1.0, 3, 0.5, 2.1),
-                new NoiseLayer(0.020, 1.0, 2, 0.5, 2.0),
-                new NoiseLayer(0.0035, 1.0, 2, 0.55, 2.0),
-                0.35,
-                1.0,
-                -0.32,
-                -0.08,
-                -0.05,
-                0.10,
-                0.22,
-                0.38,
-                0.55,
-                0.82,
-                5,
-                255,
-                42.0,
-                62.0,
-                74.0,
-                90.0,
-                42.0,
-                14.0,
-                8.0,
-                0.68,
-                0.86,
-                4.0,
-                0.35,
-                0.42
-            );
+        private BiomeBlend(float baseHeight, float heightVariation) {
+            this.baseHeight = baseHeight;
+            this.heightVariation = heightVariation;
         }
     }
 }

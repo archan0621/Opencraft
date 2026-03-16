@@ -67,24 +67,6 @@ public class MultiplayerInputHandler {
     }
 
     private boolean wouldCollideWithPlayer(Vector3 blockPos) {
-        Vector3 playerPos = player.getPosition();
-
-        float playerMinX = playerPos.x - 0.3f;
-        float playerMaxX = playerPos.x + 0.3f;
-        float playerMinY = playerPos.y;
-        float playerMaxY = playerPos.y + 1.8f;
-        float playerMinZ = playerPos.z - 0.3f;
-        float playerMaxZ = playerPos.z + 0.3f;
-
-        float blockMinX = blockPos.x - 0.5f;
-        float blockMaxX = blockPos.x + 0.5f;
-        float blockMinY = blockPos.y - 0.5f;
-        float blockMaxY = blockPos.y + 0.5f;
-        float blockMinZ = blockPos.z - 0.5f;
-        float blockMaxZ = blockPos.z + 0.5f;
-
-        return !(playerMaxX <= blockMinX || playerMinX >= blockMaxX
-            || playerMaxY <= blockMinY || playerMinY >= blockMaxY
-            || playerMaxZ <= blockMinZ || playerMinZ >= blockMaxZ);
+        return player.collidesWithBlock(blockPos);
     }
 }

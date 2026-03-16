@@ -1,37 +1,24 @@
 package kr.co.opencraft.world;
 
 /**
- * 바이옴(생물군계) 정의
- * - 각 바이옴은 지형 특성과 블록 구성을 가짐
+ * 간소화한 Minecraft-style biome profile.
+ * baseHeight / heightVariation은 오버월드 밀도장 계산에 직접 사용된다.
  */
 public enum Biome {
-    /** 평원: 평평한 지형, 잔디/흙 */
-    PLAINS(8.0, 0, BlockTypes.GRASS, BlockTypes.DIRT, BlockTypes.MY_STONE),
-    
-    /** 숲: 완만한 구릉, 잔디/흙 */
-    FOREST(12.0, 2, BlockTypes.GRASS, BlockTypes.DIRT, BlockTypes.MY_STONE),
-    
-    /** 구릉지: 롤링 힐, 잔디/흙 */
-    HILLS(25.0, 4, BlockTypes.GRASS, BlockTypes.DIRT, BlockTypes.MY_STONE),
-    
-    /** 산맥: 높고 급한 지형, 잔디/흙/돌 (고도에 따라 돌 노출) */
-    MOUNTAIN(55.0, 8, BlockTypes.GRASS, BlockTypes.DIRT, BlockTypes.ORIGIN_STONE);
-    
-    /** 지형 높이 변화 진폭 (클수록 높고 급함) */
-    public final double amplitude;
-    /** 기본 높이 오프셋 */
-    public final int baseHeightOffset;
-    /** 표면 블록 */
+    PLAINS(0.125F, 0.08F, BlockTypes.GRASS, BlockTypes.DIRT, BlockTypes.MY_STONE),
+    FOREST(0.20F, 0.18F, BlockTypes.GRASS, BlockTypes.DIRT, BlockTypes.MY_STONE),
+    HILLS(0.65F, 0.33F, BlockTypes.GRASS, BlockTypes.DIRT, BlockTypes.MY_STONE),
+    MOUNTAIN(1.15F, 0.65F, BlockTypes.GRASS, BlockTypes.DIRT, BlockTypes.ORIGIN_STONE);
+
+    public final float baseHeight;
+    public final float heightVariation;
     public final int surfaceBlock;
-    /** 표면 아래 블록 (흙층) */
     public final int subsurfaceBlock;
-    /** 깊은 지하 블록 (돌층) */
     public final int stoneBlock;
-    
-    Biome(double amplitude, int baseHeightOffset,
-          int surfaceBlock, int subsurfaceBlock, int stoneBlock) {
-        this.amplitude = amplitude;
-        this.baseHeightOffset = baseHeightOffset;
+
+    Biome(float baseHeight, float heightVariation, int surfaceBlock, int subsurfaceBlock, int stoneBlock) {
+        this.baseHeight = baseHeight;
+        this.heightVariation = heightVariation;
         this.surfaceBlock = surfaceBlock;
         this.subsurfaceBlock = subsurfaceBlock;
         this.stoneBlock = stoneBlock;
