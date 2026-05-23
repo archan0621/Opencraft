@@ -12,6 +12,7 @@ import kr.co.opencraft.entity.OpenCraftPlayer;
  * Handles player input for block interactions and gameplay controls
  */
 public class InputHandler {
+    private static final int DEFAULT_PLACEMENT_BLOCK = BlockTypes.ORIGIN_STONE;
     
     private final VoxelientEngine engine;
     private final OpenCraftPlayer player;
@@ -20,6 +21,7 @@ public class InputHandler {
     private static final float DOUBLE_TAP_TIME = 0.3f;  // 300ms window
     private float lastSpaceTapTime = -1f;
     private float timeSinceLastTap = 0f;
+    private int selectedBlockType = DEFAULT_PLACEMENT_BLOCK;
     
     public InputHandler(VoxelientEngine engine, OpenCraftPlayer player) {
         this.engine = engine;
@@ -35,6 +37,8 @@ public class InputHandler {
         
         // Auto-disable fly mode when landing
         handleFlyModeLanding();
+
+        handleBlockSelection();
         
         // Check mouse button input
         if (Gdx.input.justTouched()) {
@@ -69,6 +73,16 @@ public class InputHandler {
     private void handleFlyModeLanding() {
         if (player.isFlyMode() && player.isOnGround()) {
             player.onLanding();
+        }
+    }
+
+    private void handleBlockSelection() {
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_1)) {
+            selectedBlockType = BlockTypes.ORIGIN_STONE;
+            System.out.println("[InputHandler] Selected block: STONE");
+        } else if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_2)) {
+            selectedBlockType = BlockTypes.WATER;
+            System.out.println("[InputHandler] Selected block: WATER");
         }
     }
     
@@ -139,8 +153,8 @@ public class InputHandler {
         if (hit != null) {
             Vector3 placePos = hit.getPlacementPosition();
             
-            if (!wouldCollideWithPlayer(placePos)) {
-                engine.addBlock(placePos, BlockTypes.ORIGIN_STONE);
+            if (!wouldCollideWithPlayer(placePos, selectedBlockType)) {
+                engine.addBlock(placePos, selectedBlockType);
             } else {
                 System.out.println("Cannot place block: would collide with player");
             }
@@ -150,7 +164,8 @@ public class InputHandler {
     /**
      * Check if a block at the given position would collide with the player
      */
-    private boolean wouldCollideWithPlayer(Vector3 blockPos) {
-        return player.collidesWithBlock(blockPos);
+    private boolean wouldCollideWithPlayer(Vector3 blockPos, int blockType) {
+        return engine.getCoreEngine().getWorld().getBlockManager().isSolid(blockType)
+            && player.collidesWithBlock(blockPos);
     }
 }

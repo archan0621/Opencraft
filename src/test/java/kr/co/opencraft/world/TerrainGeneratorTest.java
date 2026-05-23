@@ -5,7 +5,14 @@ import kr.co.voxelite.world.ChunkCoord;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -90,6 +97,56 @@ class TerrainGeneratorTest {
         assertTrue(foundGrassSurface, "surface replacement should create grass-topped columns");
         assertTrue(foundDirtBelowSurface, "surface replacement should leave a dirt layer under at least one grass column");
     }
+
+    @Test
+    void terrainGeneratorAdapter_ShouldBeSafeForConcurrentChunkGeneration() throws Exception {
+        long seed = 1234L;
+        List<ChunkCoord> coords = new ArrayList<>();
+        Map<ChunkCoord, int[][]> expectedHeights = new HashMap<>();
+        TerrainGenerator serialGenerator = new TerrainGenerator(seed);
+
+        for (int chunkX = -3; chunkX <= 3; chunkX++) {
+            for (int chunkZ = -3; chunkZ <= 3; chunkZ++) {
+                ChunkCoord coord = new ChunkCoord(chunkX, chunkZ);
+                Chunk chunk = new Chunk(coord);
+                serialGenerator.generateTerrain(chunk, BlockTypes.GRASS);
+                coords.add(coord);
+                expectedHeights.put(coord, captureHeights(chunk));
+            }
+        }
+
+        TerrainGeneratorAdapter adapter = new TerrainGeneratorAdapter(seed);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch start = new CountDownLatch(1);
+
+        try {
+            List<Callable<GeneratedHeights>> tasks = new ArrayList<>();
+            for (int round = 0; round < 4; round++) {
+                for (ChunkCoord coord : coords) {
+                    tasks.add(() -> {
+                        start.await();
+                        Chunk chunk = new Chunk(coord);
+                        adapter.generateChunk(chunk, BlockTypes.GRASS);
+                        return new GeneratedHeights(coord, captureHeights(chunk));
+                    });
+                }
+            }
+
+            List<Future<GeneratedHeights>> futures = new ArrayList<>();
+            for (Callable<GeneratedHeights> task : tasks) {
+                futures.add(executor.submit(task));
+            }
+            start.countDown();
+
+            for (Future<GeneratedHeights> future : futures) {
+                GeneratedHeights generated = future.get();
+                assertHeightsEqual(expectedHeights.get(generated.coord), generated.heights);
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
     private int findTopSolidY(Chunk chunk, int localX, int localZ) {
         for (int y = 255; y >= 0; y--) {
             if (chunk.getBlock(localX, y, localZ) != null) {
@@ -97,5 +154,26 @@ class TerrainGeneratorTest {
             }
         }
         return -1;
+    }
+
+    private int[][] captureHeights(Chunk chunk) {
+        int[][] heights = new int[Chunk.CHUNK_SIZE][Chunk.CHUNK_SIZE];
+        for (int localX = 0; localX < Chunk.CHUNK_SIZE; localX++) {
+            for (int localZ = 0; localZ < Chunk.CHUNK_SIZE; localZ++) {
+                heights[localX][localZ] = findTopSolidY(chunk, localX, localZ);
+            }
+        }
+        return heights;
+    }
+
+    private void assertHeightsEqual(int[][] expected, int[][] actual) {
+        for (int localX = 0; localX < Chunk.CHUNK_SIZE; localX++) {
+            for (int localZ = 0; localZ < Chunk.CHUNK_SIZE; localZ++) {
+                assertEquals(expected[localX][localZ], actual[localX][localZ]);
+            }
+        }
+    }
+
+    private record GeneratedHeights(ChunkCoord coord, int[][] heights) {
     }
 }

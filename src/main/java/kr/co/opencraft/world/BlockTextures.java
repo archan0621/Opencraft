@@ -99,6 +99,9 @@ public class BlockTextures {
             5,  // sides: texture 5 (grass side)
             2   // bottom: texture 2 (dirt)
         ));
+
+        // WATER (6) - all faces same
+        register(BlockTypes.WATER, new FaceTextures(6));
         
         // BEDROCK (17) - all faces same
         register(BlockTypes.BEDROCK, new FaceTextures(17));

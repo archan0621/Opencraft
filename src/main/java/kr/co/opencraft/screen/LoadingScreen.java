@@ -65,12 +65,11 @@ public class LoadingScreen implements Screen {
                 // === 읽기 쉬운 애플리케이션 코드 ===
                 
                 // 1. 월드 설정
-                long seed = System.currentTimeMillis();
                 String worldPath = "saves/world1";
+                long seed = WorldSeedStore.loadOrCreateSeed(worldPath);
                 
                 // 2. 지형 생성 정책 (애플리케이션이 결정)
-                TerrainGenerator terrainGenerator = new TerrainGenerator(seed);
-                TerrainGeneratorAdapter generatorAdapter = new TerrainGeneratorAdapter(terrainGenerator);
+                TerrainGeneratorAdapter generatorAdapter = new TerrainGeneratorAdapter(seed);
                 
                 // 3. 청크 로딩 정책 (애플리케이션이 결정)
                 ChunkLoadPolicy loadPolicy = new ChunkLoadPolicy(
@@ -88,9 +87,11 @@ public class LoadingScreen implements Screen {
                 engine = VoxeliteEngine.builder(player)
                     .playerStart(0f, 100f, 0f)  // 엔진이 지형 높이 계산 후 조정
                     .autoCreateGround(true)
+                    .worldSeed(seed)
                     .worldSavePath(worldPath)
                     .chunkGenerator(generatorAdapter)
                     .chunkLoadPolicy(policyAdapter)
+                    .blockPropertiesProvider(new OpenCraftBlockPropertiesProvider())
                     .initialChunkRadius(9)    // pregenerate radius와 맞춤
                     .chunkPreloadRadius(5)    // visible radius까지 먼저 메모리 로드
                     .defaultGroundBlockType(BlockTypes.GRASS)  // 잔디 블록

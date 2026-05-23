@@ -12,9 +12,12 @@ import kr.co.voxeliver.network.protocol.impl.BreakBlockRequestPacket;
 import kr.co.voxeliver.network.protocol.impl.PlaceBlockRequestPacket;
 
 public class MultiplayerInputHandler {
+    private static final int DEFAULT_PLACEMENT_BLOCK = BlockTypes.ORIGIN_STONE;
+
     private final VoxelientEngine engine;
     private final OpenCraftPlayer player;
     private final MultiplayerClient multiplayerClient;
+    private int selectedBlockType = DEFAULT_PLACEMENT_BLOCK;
 
     public MultiplayerInputHandler(VoxelientEngine engine, OpenCraftPlayer player, MultiplayerClient multiplayerClient) {
         this.engine = engine;
@@ -23,6 +26,8 @@ public class MultiplayerInputHandler {
     }
 
     public void handleInput() {
+        handleBlockSelection();
+
         if (!Gdx.input.justTouched()) {
             return;
         }
@@ -45,6 +50,16 @@ public class MultiplayerInputHandler {
         return -1;
     }
 
+    private void handleBlockSelection() {
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_1)) {
+            selectedBlockType = BlockTypes.ORIGIN_STONE;
+            System.out.println("[MultiplayerInputHandler] Selected block: STONE");
+        } else if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_2)) {
+            selectedBlockType = BlockTypes.WATER;
+            System.out.println("[MultiplayerInputHandler] Selected block: WATER");
+        }
+    }
+
     private void handleBlockDestruction() {
         Vector3 selectedBlock = engine.getSelectedBlock();
         if (selectedBlock != null) {
@@ -59,14 +74,15 @@ public class MultiplayerInputHandler {
         }
 
         Vector3 placePos = hit.getPlacementPosition();
-        if (wouldCollideWithPlayer(placePos)) {
+        if (wouldCollideWithPlayer(placePos, selectedBlockType)) {
             return;
         }
 
-        multiplayerClient.send(new PlaceBlockRequestPacket(placePos, BlockTypes.ORIGIN_STONE));
+        multiplayerClient.send(new PlaceBlockRequestPacket(placePos, selectedBlockType));
     }
 
-    private boolean wouldCollideWithPlayer(Vector3 blockPos) {
-        return player.collidesWithBlock(blockPos);
+    private boolean wouldCollideWithPlayer(Vector3 blockPos, int blockType) {
+        return engine.getCoreEngine().getWorld().getBlockManager().isSolid(blockType)
+            && player.collidesWithBlock(blockPos);
     }
 }

@@ -17,6 +17,7 @@ import java.util.UUID;
 import kr.co.opencraft.engine.OpenCraftGame;
 import kr.co.opencraft.entity.OpenCraftPlayer;
 import kr.co.opencraft.network.MultiplayerClient;
+import kr.co.opencraft.world.OpenCraftBlockPropertiesProvider;
 import kr.co.voxelite.engine.VoxeliteEngine;
 import kr.co.voxelite.world.Chunk;
 import kr.co.voxelite.world.IChunkLoadPolicy;
@@ -116,6 +117,7 @@ public class MultiplayerLoadingScreen implements Screen {
                         return 4096;
                     }
                 })
+                .blockPropertiesProvider(new OpenCraftBlockPropertiesProvider())
                 .initialChunkRadius(0)
                 .chunkPreloadRadius(0)
                 .worldSavePath(Path.of(

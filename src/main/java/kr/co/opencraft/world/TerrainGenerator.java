@@ -73,7 +73,7 @@ public class TerrainGenerator {
         }
     }
 
-    public void generateTerrain(Chunk chunk, int defaultBlockType) {
+    public synchronized void generateTerrain(Chunk chunk, int defaultBlockType) {
         int chunkX = chunk.getCoord().x;
         int chunkZ = chunk.getCoord().z;
         Biome[] biomesForGeneration = sampleBiomesForGeneration(chunkX, chunkZ);
