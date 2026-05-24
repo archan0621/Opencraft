@@ -3,16 +3,19 @@ package kr.co.opencraft.input;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Buttons;
 import com.badlogic.gdx.math.Vector3;
+import kr.co.opencraft.entity.OpenCraftPlayer;
+import kr.co.opencraft.world.BlockRegistry;
+import kr.co.opencraft.world.BlockTypes;
+import kr.co.opencraft.world.OpenCraftBlockRegistry;
 import kr.co.voxelient.engine.VoxelientEngine;
 import kr.co.voxelite.physics.RaycastHit;
-import kr.co.opencraft.world.BlockTypes;
-import kr.co.opencraft.entity.OpenCraftPlayer;
 
 /**
  * Handles player input for block interactions and gameplay controls
  */
 public class InputHandler {
     private static final int DEFAULT_PLACEMENT_BLOCK = BlockTypes.ORIGIN_STONE;
+    private static final BlockRegistry BLOCKS = OpenCraftBlockRegistry.blocks();
     
     private final VoxelientEngine engine;
     private final OpenCraftPlayer player;
@@ -78,12 +81,15 @@ public class InputHandler {
 
     private void handleBlockSelection() {
         if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_1)) {
-            selectedBlockType = BlockTypes.ORIGIN_STONE;
-            System.out.println("[InputHandler] Selected block: STONE");
+            selectBlock(BlockTypes.ORIGIN_STONE);
         } else if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_2)) {
-            selectedBlockType = BlockTypes.WATER;
-            System.out.println("[InputHandler] Selected block: WATER");
+            selectBlock(BlockTypes.WATER);
         }
+    }
+
+    private void selectBlock(int blockType) {
+        selectedBlockType = blockType;
+        System.out.println("[InputHandler] Selected block: " + BLOCKS.get(blockType).displayName());
     }
     
     /**

@@ -5,7 +5,9 @@ import com.badlogic.gdx.Input.Buttons;
 import com.badlogic.gdx.math.Vector3;
 import kr.co.opencraft.entity.OpenCraftPlayer;
 import kr.co.opencraft.network.MultiplayerClient;
+import kr.co.opencraft.world.BlockRegistry;
 import kr.co.opencraft.world.BlockTypes;
+import kr.co.opencraft.world.OpenCraftBlockRegistry;
 import kr.co.voxelient.engine.VoxelientEngine;
 import kr.co.voxelite.physics.RaycastHit;
 import kr.co.voxeliver.network.protocol.impl.BreakBlockRequestPacket;
@@ -13,6 +15,7 @@ import kr.co.voxeliver.network.protocol.impl.PlaceBlockRequestPacket;
 
 public class MultiplayerInputHandler {
     private static final int DEFAULT_PLACEMENT_BLOCK = BlockTypes.ORIGIN_STONE;
+    private static final BlockRegistry BLOCKS = OpenCraftBlockRegistry.blocks();
 
     private final VoxelientEngine engine;
     private final OpenCraftPlayer player;
@@ -52,12 +55,15 @@ public class MultiplayerInputHandler {
 
     private void handleBlockSelection() {
         if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_1)) {
-            selectedBlockType = BlockTypes.ORIGIN_STONE;
-            System.out.println("[MultiplayerInputHandler] Selected block: STONE");
+            selectBlock(BlockTypes.ORIGIN_STONE);
         } else if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_2)) {
-            selectedBlockType = BlockTypes.WATER;
-            System.out.println("[MultiplayerInputHandler] Selected block: WATER");
+            selectBlock(BlockTypes.WATER);
         }
+    }
+
+    private void selectBlock(int blockType) {
+        selectedBlockType = blockType;
+        System.out.println("[MultiplayerInputHandler] Selected block: " + BLOCKS.get(blockType).displayName());
     }
 
     private void handleBlockDestruction() {
