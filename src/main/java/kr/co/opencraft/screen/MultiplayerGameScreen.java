@@ -13,6 +13,7 @@ import kr.co.opencraft.input.MultiplayerInputHandler;
 import kr.co.opencraft.network.MultiplayerClient;
 import kr.co.opencraft.render.RemotePlayerRenderer;
 import kr.co.opencraft.render.RemotePlayerState;
+import kr.co.opencraft.world.BlockRenderLayerProvider;
 import kr.co.opencraft.world.BlockTextureProvider;
 import kr.co.voxelite.engine.VoxeliteEngine;
 import kr.co.voxelite.world.ChunkCoord;
@@ -62,6 +63,7 @@ public class MultiplayerGameScreen implements Screen {
         clientEngine = VoxelientEngine.builder(coreEngine)
             .textureAtlasPath("texture/block.png")
             .textureProvider(new BlockTextureProvider())
+            .renderLayerProvider(new BlockRenderLayerProvider())
             .playerSpeed(5f)
             .cameraPitch(-20f)
             .cameraFar(144f)

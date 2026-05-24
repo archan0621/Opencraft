@@ -8,6 +8,7 @@ import kr.co.voxelite.engine.VoxeliteEngine;
 import kr.co.voxelient.engine.VoxelientEngine;
 import kr.co.opencraft.entity.OpenCraftPlayer;
 import kr.co.opencraft.camera.OpenCraftCameraController;
+import kr.co.opencraft.world.BlockRenderLayerProvider;
 import kr.co.opencraft.world.BlockTextureProvider;
 import kr.co.voxelite.util.PerformanceLogger;
 
@@ -37,6 +38,7 @@ public class GameScreen implements Screen {
         clientEngine = VoxelientEngine.builder(coreEngine)
             .textureAtlasPath("texture/block.png")
             .textureProvider(new BlockTextureProvider())
+            .renderLayerProvider(new BlockRenderLayerProvider())
             .playerSpeed(5f)
             .cameraPitch(-20f)
             .cameraFar(144f)

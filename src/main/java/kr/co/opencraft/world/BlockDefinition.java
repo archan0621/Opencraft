@@ -2,6 +2,7 @@ package kr.co.opencraft.world;
 
 import java.util.Locale;
 import java.util.Objects;
+import kr.co.voxelite.world.BlockRenderLayer;
 
 /**
  * Immutable behavior profile for one block type.

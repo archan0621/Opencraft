@@ -1,5 +1,6 @@
 package kr.co.opencraft.world;
 
+import kr.co.voxelite.world.BlockRenderLayer;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -41,9 +42,11 @@ class OpenCraftBlockRegistryTest {
     void providers_ShouldDelegateToTheSameRegistry() {
         OpenCraftBlockPropertiesProvider propertiesProvider = new OpenCraftBlockPropertiesProvider(blocks);
         BlockTextureProvider textureProvider = new BlockTextureProvider(blocks);
+        BlockRenderLayerProvider renderLayerProvider = new BlockRenderLayerProvider(blocks);
 
         assertFalse(propertiesProvider.isSolid(BlockTypes.WATER));
         assertTrue(propertiesProvider.isSolid(BlockTypes.ORIGIN_STONE));
         assertEquals(3, textureProvider.getTexture(BlockTypes.GRASS, 4));
+        assertEquals(BlockRenderLayer.TRANSLUCENT, renderLayerProvider.getRenderLayer(BlockTypes.WATER));
     }
 }

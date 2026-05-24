@@ -2,6 +2,7 @@ package kr.co.opencraft.world;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import kr.co.voxelite.world.BlockRenderLayer;
 
 /**
  * Single lookup point for OpenCraft block behavior.

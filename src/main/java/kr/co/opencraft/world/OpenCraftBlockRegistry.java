@@ -1,5 +1,7 @@
 package kr.co.opencraft.world;
 
+import kr.co.voxelite.world.BlockRenderLayer;
+
 /**
  * OpenCraft's built-in block definitions.
  */
