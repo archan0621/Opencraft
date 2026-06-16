@@ -41,7 +41,9 @@ public class GameScreen implements Screen {
             .renderLayerProvider(new BlockRenderLayerProvider())
             .playerSpeed(5f)
             .cameraPitch(-20f)
-            .cameraFar(144f)
+            .cameraFar(256f)
+            .fogRange(0.72f, 0.98f)
+            .chunkMeshBuildPerFrame(4)
             .build();
         clientEngine.initialize(width, height);
 

@@ -73,9 +73,9 @@ public class LoadingScreen implements Screen {
                 
                 // 3. 청크 로딩 정책 (애플리케이션이 결정)
                 ChunkLoadPolicy loadPolicy = new ChunkLoadPolicy(
-                    5,  // visible radius
-                    7,  // keep-loaded radius
-                    9   // pregenerate radius
+                    16, // full-detail visible radius, like Minecraft renderDistanceChunks
+                    17, // keep-loaded radius
+                    18  // pregenerate radius
                 );
                 ChunkLoadPolicyAdapter policyAdapter = new ChunkLoadPolicyAdapter(loadPolicy);
                 
@@ -92,8 +92,8 @@ public class LoadingScreen implements Screen {
                     .chunkGenerator(generatorAdapter)
                     .chunkLoadPolicy(policyAdapter)
                     .blockPropertiesProvider(new OpenCraftBlockPropertiesProvider())
-                    .initialChunkRadius(9)    // pregenerate radius와 맞춤
-                    .chunkPreloadRadius(5)    // visible radius까지 먼저 메모리 로드
+                    .initialChunkRadius(8)    // startup pregen stays modest; runtime loading fills the 16-chunk view
+                    .chunkPreloadRadius(6)    // nearby chunks first, Minecraft-style async expansion after spawn
                     .defaultGroundBlockType(BlockTypes.GRASS)  // 잔디 블록
                     .build();
 
