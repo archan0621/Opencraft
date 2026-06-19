@@ -43,7 +43,10 @@ public class GameScreen implements Screen {
             .cameraPitch(-20f)
             .cameraFar(256f)
             .fogRange(0.72f, 0.98f)
-            .chunkMeshBuildPerFrame(4)
+            .chunkMeshBuildPerFrame(1)
+            .chunkMeshApplyPerFrame(8)
+            .chunkMeshApplyBudgetMs(4)
+            .showRenderStats(true)
             .build();
         clientEngine.initialize(width, height);
 
