@@ -85,8 +85,7 @@ public class GameScreen implements Screen {
             long inputMs = afterInput - afterUpdate;
             long renderMs = afterRender - afterInput;
             int fps = Gdx.graphics.getFramesPerSecond();
-            // Log every frame if slow (>16ms), else every LOG_INTERVAL frames
-            boolean slow = totalMs > 16;
+            boolean slow = totalMs >= PerformanceLogger.SLOW_FRAME_MS;
             boolean interval = (frame % PerformanceLogger.LOG_INTERVAL) == 0;
             if (slow || interval) {
                 Runtime rt = Runtime.getRuntime();
