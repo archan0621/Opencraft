@@ -1,6 +1,7 @@
 package kr.co.opencraft.world;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import kr.co.voxelite.world.BlockRenderLayer;
 
@@ -9,9 +10,11 @@ import kr.co.voxelite.world.BlockRenderLayer;
  */
 public final class BlockRegistry {
     private final Map<Integer, BlockDefinition> definitions;
+    private final List<BlockDefinition> values;
     private final BlockDefinition air;
 
     private BlockRegistry(Map<Integer, BlockDefinition> definitions) {
+        values = List.copyOf(definitions.values());
         this.definitions = Map.copyOf(definitions);
         air = this.definitions.get(BlockTypes.AIR);
         if (air == null) {
@@ -29,6 +32,10 @@ public final class BlockRegistry {
 
     public boolean isKnown(int blockType) {
         return definitions.containsKey(blockType);
+    }
+
+    public List<BlockDefinition> values() {
+        return values;
     }
 
     public boolean isSolid(int blockType) {

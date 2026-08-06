@@ -1,34 +1,30 @@
 package kr.co.opencraft.input;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.Input.Buttons;
 import com.badlogic.gdx.math.Vector3;
 import kr.co.opencraft.entity.OpenCraftPlayer;
-import kr.co.opencraft.world.BlockRegistry;
-import kr.co.opencraft.world.BlockTypes;
-import kr.co.opencraft.world.OpenCraftBlockRegistry;
+import kr.co.opencraft.ui.Hotbar;
 import kr.co.voxelient.engine.VoxelientEngine;
 import kr.co.voxelite.physics.RaycastHit;
 
 /**
  * Handles player input for block interactions and gameplay controls
  */
-public class InputHandler {
-    private static final int DEFAULT_PLACEMENT_BLOCK = BlockTypes.ORIGIN_STONE;
-    private static final BlockRegistry BLOCKS = OpenCraftBlockRegistry.blocks();
-    
+public class InputHandler extends InputAdapter {
     private final VoxelientEngine engine;
     private final OpenCraftPlayer player;
+    private final Hotbar hotbar;
     
     // Double-tap detection for fly mode toggle
     private static final float DOUBLE_TAP_TIME = 0.3f;  // 300ms window
     private float lastSpaceTapTime = -1f;
     private float timeSinceLastTap = 0f;
-    private int selectedBlockType = DEFAULT_PLACEMENT_BLOCK;
-    
-    public InputHandler(VoxelientEngine engine, OpenCraftPlayer player) {
+    public InputHandler(VoxelientEngine engine, OpenCraftPlayer player, Hotbar hotbar) {
         this.engine = engine;
         this.player = player;
+        this.hotbar = hotbar;
     }
     
     /**
@@ -80,16 +76,27 @@ public class InputHandler {
     }
 
     private void handleBlockSelection() {
-        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_1)) {
-            selectBlock(BlockTypes.ORIGIN_STONE);
-        } else if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_2)) {
-            selectBlock(BlockTypes.WATER);
+        for (int i = 0; i < Math.min(hotbar.size(), 9); i++) {
+            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_1 + i)) {
+                hotbar.selectSlot(i);
+                logSelectedBlock();
+                return;
+            }
         }
     }
 
-    private void selectBlock(int blockType) {
-        selectedBlockType = blockType;
-        System.out.println("[InputHandler] Selected block: " + BLOCKS.get(blockType).displayName());
+    @Override
+    public boolean scrolled(float amountX, float amountY) {
+        if (amountY == 0f) {
+            return false;
+        }
+        hotbar.scroll(amountY > 0f ? 1 : -1);
+        logSelectedBlock();
+        return true;
+    }
+
+    private void logSelectedBlock() {
+        System.out.println("[InputHandler] Selected block: " + hotbar.getSelectedBlock().displayName());
     }
     
     /**
@@ -158,6 +165,7 @@ public class InputHandler {
         RaycastHit hit = engine.getRaycastHit();
         if (hit != null) {
             Vector3 placePos = hit.getPlacementPosition();
+            int selectedBlockType = hotbar.getSelectedBlock().typeId();
             
             if (!wouldCollideWithPlayer(placePos, selectedBlockType)) {
                 engine.addBlock(placePos, selectedBlockType);

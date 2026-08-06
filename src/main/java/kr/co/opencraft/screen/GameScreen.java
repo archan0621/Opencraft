@@ -4,12 +4,16 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import kr.co.opencraft.engine.OpenCraftGame;
 import kr.co.opencraft.input.InputHandler;
+import kr.co.opencraft.ui.Hotbar;
+import kr.co.opencraft.ui.HotbarRenderer;
 import kr.co.voxelite.engine.VoxeliteEngine;
 import kr.co.voxelient.engine.VoxelientEngine;
 import kr.co.opencraft.entity.OpenCraftPlayer;
 import kr.co.opencraft.camera.OpenCraftCameraController;
 import kr.co.opencraft.world.BlockRenderLayerProvider;
 import kr.co.opencraft.world.BlockTextureProvider;
+import kr.co.opencraft.world.BlockTypes;
+import kr.co.opencraft.world.OpenCraftBlockRegistry;
 import kr.co.voxelite.util.PerformanceLogger;
 
 public class GameScreen implements Screen {
@@ -19,6 +23,7 @@ public class GameScreen implements Screen {
     private VoxelientEngine clientEngine;
     private InputHandler inputHandler;
     private OpenCraftCameraController cameraController;
+    private HotbarRenderer hotbarRenderer;
 
     public GameScreen(OpenCraftGame game, VoxeliteEngine engine, OpenCraftPlayer player) {
         this.game = game;
@@ -50,7 +55,10 @@ public class GameScreen implements Screen {
             .build();
         clientEngine.initialize(width, height);
 
-        inputHandler = new InputHandler(clientEngine, player);
+        Hotbar hotbar = new Hotbar(OpenCraftBlockRegistry.blocks(), BlockTypes.ORIGIN_STONE);
+        inputHandler = new InputHandler(clientEngine, player, hotbar);
+        hotbarRenderer = new HotbarRenderer(hotbar, "texture/block.png");
+        Gdx.input.setInputProcessor(inputHandler);
         
         cameraController = new OpenCraftCameraController(
             clientEngine.getCamera(),
@@ -76,6 +84,7 @@ public class GameScreen implements Screen {
         long afterInput = PerformanceLogger.now();
         
         clientEngine.render();
+        hotbarRenderer.render(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         long afterRender = PerformanceLogger.now();
         
         int frame = PerformanceLogger.tickFrame();
@@ -110,10 +119,18 @@ public class GameScreen implements Screen {
     public void resume() {}
 
     @Override
-    public void hide() {}
+    public void hide() {
+        if (Gdx.input.getInputProcessor() == inputHandler) {
+            Gdx.input.setInputProcessor(null);
+        }
+    }
 
     @Override
     public void dispose() {
+        hide();
+        if (hotbarRenderer != null) {
+            hotbarRenderer.dispose();
+        }
         if (clientEngine != null) {
             clientEngine.dispose();
         }
