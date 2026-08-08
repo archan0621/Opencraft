@@ -41,7 +41,7 @@ public class GameScreen implements Screen {
         int width = Gdx.graphics.getWidth();
         int height = Gdx.graphics.getHeight();
         clientEngine = VoxelientEngine.builder(coreEngine)
-            .textureAtlasPath("texture/block.png")
+            .textureAtlasPath("texture/block-trees.png")
             .textureProvider(new BlockTextureProvider())
             .renderLayerProvider(new BlockRenderLayerProvider())
             .playerSpeed(5f)
@@ -57,7 +57,7 @@ public class GameScreen implements Screen {
 
         Hotbar hotbar = new Hotbar(OpenCraftBlockRegistry.blocks(), BlockTypes.ORIGIN_STONE);
         inputHandler = new InputHandler(clientEngine, player, hotbar);
-        hotbarRenderer = new HotbarRenderer(hotbar, "texture/block.png");
+        hotbarRenderer = new HotbarRenderer(hotbar, "texture/block-trees.png");
         Gdx.input.setInputProcessor(inputHandler);
         
         cameraController = new OpenCraftCameraController(

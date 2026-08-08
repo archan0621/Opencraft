@@ -11,7 +11,7 @@ class HotbarTest {
     void selectsRegisteredBlocksAndWrapsWhenScrolling() {
         Hotbar hotbar = new Hotbar(OpenCraftBlockRegistry.blocks(), BlockTypes.ORIGIN_STONE);
 
-        assertEquals(6, hotbar.size());
+        assertEquals(8, hotbar.size());
         assertEquals(BlockTypes.ORIGIN_STONE, hotbar.getSelectedBlock().typeId());
 
         hotbar.selectSlot(hotbar.size() - 1);
@@ -19,6 +19,6 @@ class HotbarTest {
         assertEquals(BlockTypes.MY_STONE, hotbar.getSelectedBlock().typeId());
 
         hotbar.scroll(-1);
-        assertEquals(BlockTypes.BEDROCK, hotbar.getSelectedBlock().typeId());
+        assertEquals(BlockTypes.OAK_LEAVES, hotbar.getSelectedBlock().typeId());
     }
 }

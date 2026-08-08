@@ -6,7 +6,7 @@ import kr.co.voxelite.world.Chunk;
 import java.util.Random;
 
 /**
- * Minecraft 1.12 overworld-style terrain generation without water or structures.
+ * Minecraft 1.12 overworld-style terrain generation with simple biome decoration.
  * The flow mirrors the vanilla generator at a high level:
  * biome blend -> coarse density field -> chunk fill -> surface replacement.
  */
@@ -80,7 +80,68 @@ public class TerrainGenerator {
 
         setBlocksInChunk(chunk, chunkX, chunkZ, biomesForGeneration);
         replaceBiomeBlocks(chunk, chunkX, chunkZ);
+        decorateTrees(chunk, chunkX, chunkZ);
         chunk.markAsGenerated();
+    }
+
+    private void decorateTrees(Chunk chunk, int chunkX, int chunkZ) {
+        for (int localX = 2; localX < Chunk.CHUNK_SIZE - 2; localX++) {
+            for (int localZ = 2; localZ < Chunk.CHUNK_SIZE - 2; localZ++) {
+                int worldX = chunkX * Chunk.CHUNK_SIZE + localX;
+                int worldZ = chunkZ * Chunk.CHUNK_SIZE + localZ;
+                Biome biome = biomeGenerator.getBiomeAt(worldX, worldZ);
+                double chance = switch (biome) {
+                    case FOREST -> 0.015D;
+                    case PLAINS -> 0.0025D;
+                    default -> 0.0D;
+                };
+
+                if (columnRandom(worldX, worldZ, 101) >= chance) {
+                    continue;
+                }
+
+                int surfaceY = findSurfaceY(chunk, localX, localZ);
+                if (surfaceY < 0 || chunk.getBlock(localX, surfaceY, localZ).blockType != BlockTypes.GRASS) {
+                    continue;
+                }
+
+                int trunkHeight = 4 + (int) (columnRandom(worldX, worldZ, 102) * 3.0D);
+                if (surfaceY + trunkHeight + 1 >= CHUNK_HEIGHT) {
+                    continue;
+                }
+                placeOakTree(chunk, localX, surfaceY + 1, localZ, trunkHeight);
+            }
+        }
+    }
+
+    private int findSurfaceY(Chunk chunk, int localX, int localZ) {
+        for (int y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+            if (chunk.getBlock(localX, y, localZ) != null) {
+                return y;
+            }
+        }
+        return -1;
+    }
+
+    private void placeOakTree(Chunk chunk, int localX, int baseY, int localZ, int trunkHeight) {
+        int crownY = baseY + trunkHeight - 1;
+        for (int y = crownY - 2; y <= crownY + 1; y++) {
+            int radius = y == crownY + 1 ? 1 : 2;
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (radius == 2 && Math.abs(dx) == 2 && Math.abs(dz) == 2) {
+                        continue;
+                    }
+                    if (chunk.getBlock(localX + dx, y, localZ + dz) == null) {
+                        chunk.addBlockLocal(localX + dx, y, localZ + dz, BlockTypes.OAK_LEAVES);
+                    }
+                }
+            }
+        }
+
+        for (int dy = 0; dy < trunkHeight; dy++) {
+            chunk.addBlockLocal(localX, baseY + dy, localZ, BlockTypes.OAK_LOG);
+        }
     }
 
     private void setBlocksInChunk(Chunk chunk, int chunkX, int chunkZ, Biome[] biomesForGeneration) {

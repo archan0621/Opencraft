@@ -8,5 +8,7 @@ public enum BlockMaterial {
     STONE,
     EARTH,
     GRASS,
-    WATER
+    WATER,
+    WOOD,
+    LEAVES
 }

@@ -55,6 +55,19 @@ public final class OpenCraftBlockRegistry {
             .textures(BlockFaceTextures.same(17))
             .hardness(1000f)
             .build())
+        .register(BlockDefinition.builder(BlockTypes.OAK_LOG, "oak_log")
+            .displayName("Oak Log")
+            .material(BlockMaterial.WOOD)
+            .textures(BlockFaceTextures.topSidesBottom(21, 20, 21))
+            .hardness(2f)
+            .build())
+        .register(BlockDefinition.builder(BlockTypes.OAK_LEAVES, "oak_leaves")
+            .displayName("Oak Leaves")
+            .material(BlockMaterial.LEAVES)
+            .textures(BlockFaceTextures.same(22))
+            .hardness(0.2f)
+            .lightOpacity(1)
+            .build())
         .build();
 
     public static BlockRegistry blocks() {

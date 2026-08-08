@@ -49,4 +49,15 @@ class OpenCraftBlockRegistryTest {
         assertEquals(3, textureProvider.getTexture(BlockTypes.GRASS, 4));
         assertEquals(BlockRenderLayer.TRANSLUCENT, renderLayerProvider.getRenderLayer(BlockTypes.WATER));
     }
+
+    @Test
+    void oakBlocks_ShouldExposeWoodAndLeafTextures() {
+        assertArrayEquals(
+            new int[] { 20, 20, 20, 20, 21, 21 },
+            blocks.get(BlockTypes.OAK_LOG).textures().toArray()
+        );
+        assertEquals(22, blocks.get(BlockTypes.OAK_LEAVES).textureForFace(0));
+        assertEquals(BlockMaterial.WOOD, blocks.get(BlockTypes.OAK_LOG).material());
+        assertEquals(BlockMaterial.LEAVES, blocks.get(BlockTypes.OAK_LEAVES).material());
+    }
 }

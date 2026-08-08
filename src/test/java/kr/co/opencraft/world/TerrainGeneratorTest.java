@@ -99,6 +99,30 @@ class TerrainGeneratorTest {
     }
 
     @Test
+    void generateTerrain_ShouldAddDeterministicOakTrees() {
+        TerrainGenerator generator = new TerrainGenerator(1234L);
+        int logs = 0;
+        int leaves = 0;
+
+        for (int chunkX = -4; chunkX <= 4 && logs == 0; chunkX++) {
+            for (int chunkZ = -4; chunkZ <= 4 && logs == 0; chunkZ++) {
+                Chunk chunk = new Chunk(new ChunkCoord(chunkX, chunkZ));
+                generator.generateTerrain(chunk, BlockTypes.GRASS);
+                for (Chunk.BlockData block : chunk.getBlocks()) {
+                    if (block.blockType == BlockTypes.OAK_LOG) {
+                        logs++;
+                    } else if (block.blockType == BlockTypes.OAK_LEAVES) {
+                        leaves++;
+                    }
+                }
+            }
+        }
+
+        assertTrue(logs > 0, "forest or plains chunks should eventually contain oak logs");
+        assertTrue(leaves > 0, "generated oak trees should contain leaves");
+    }
+
+    @Test
     void terrainGeneratorAdapter_ShouldBeSafeForConcurrentChunkGeneration() throws Exception {
         long seed = 1234L;
         List<ChunkCoord> coords = new ArrayList<>();

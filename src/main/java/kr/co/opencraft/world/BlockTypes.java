@@ -14,6 +14,8 @@ public class BlockTypes {
     public static final int GRASS = 4;
     public static final int WATER = 6;
     public static final int BEDROCK = 17;
+    public static final int OAK_LOG = 20;
+    public static final int OAK_LEAVES = 22;
 
     private BlockTypes() {
     }
