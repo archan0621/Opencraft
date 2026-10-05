@@ -36,7 +36,6 @@ public class MultiplayerGameScreen implements Screen {
     private final MultiplayerClient multiplayerClient;
     private final int localPlayerId;
     private final Map<Integer, RemotePlayerState> remotePlayers = new HashMap<>();
-    private final Vector3 lastSentPosition = new Vector3(Float.NaN, Float.NaN, Float.NaN);
     private final LinkedHashMap<Integer, Vector3> pendingMoveDeltas = new LinkedHashMap<>();
     private final Vector3 lastMoveSamplePosition = new Vector3(Float.NaN, Float.NaN, Float.NaN);
 
@@ -94,18 +93,16 @@ public class MultiplayerGameScreen implements Screen {
 
     private void sendLocalMovement(float delta) {
         moveSendAccumulator += delta;
-        Vector3 position = new Vector3(player.getPosition());
-        boolean moved = !position.epsilonEquals(lastSentPosition, 0.001f);
-        if (!moved && moveSendAccumulator < MOVE_SEND_INTERVAL) {
+        if (moveSendAccumulator < MOVE_SEND_INTERVAL) {
             return;
         }
 
+        Vector3 position = new Vector3(player.getPosition());
         int sequence = nextMoveSequence++;
         Vector3 deltaSinceLastSent = new Vector3(position).sub(lastMoveSamplePosition);
         pendingMoveDeltas.put(sequence, deltaSinceLastSent);
         multiplayerClient.send(new MovePacket(sequence, position.x, position.y, position.z));
         lastMoveSamplePosition.set(position);
-        lastSentPosition.set(position);
         moveSendAccumulator = 0f;
     }
 
