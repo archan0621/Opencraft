@@ -13,7 +13,6 @@ import kr.co.opencraft.world.BlockDefinition;
 
 public final class HotbarRenderer {
     private static final int ATLAS_COLUMNS = 16;
-    private static final int TILE_SIZE = 16;
     private static final float SLOT_SIZE = 48f;
     private static final float SLOT_GAP = 4f;
     private static final float ICON_PADDING = 8f;
@@ -80,9 +79,10 @@ public final class HotbarRenderer {
     }
 
     private TextureRegion textureRegion(int textureIndex) {
+        int tileSize = atlas.getWidth() / ATLAS_COLUMNS;
         int tileX = textureIndex % ATLAS_COLUMNS;
         int tileY = textureIndex / ATLAS_COLUMNS;
-        return new TextureRegion(atlas, tileX * TILE_SIZE, tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        return new TextureRegion(atlas, tileX * tileSize, tileY * tileSize, tileSize, tileSize);
     }
 
     public void dispose() {

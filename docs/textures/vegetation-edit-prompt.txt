@@ -1,0 +1,10 @@
+Use case: precise-object-edit
+Asset type: original OpenCraft terrain texture atlas.
+Edit the attached original 4x4 texture sheet. Keep its exact sixteen equal square cell layout, positions, opaque alpha, and material identities. Keep stone, granite, dirt, sand, water, bark, log-end and bedrock essentially unchanged.
+CHANGE ONLY GREEN VEGETATION: row1 column4 grass top, row2 column2 grass side green sod, row3 column3 leaves, row3 column4 moss, row4 column4 grass variation.
+The user finds the current greens too neon, noisy and speckled. Redesign these cells, do not merely recolor their tiny flecks.
+Grass top: a calm medium-dark grayish sage green base (approximately #647552) covering at least 65 percent of each tile; just 4-6 broad irregular softly stepped pixel patches in close neighboring tones #5c6b4b and #70805b. No individual blades, vertical dashes, checker noise or stippling. Each color cluster should span about 5-9 pixels on a logical 32x32 grid. Maximum 4 green colors. Saturation muted, earthy, natural. No lime yellow or very dark pinholes. Keep light-dark range narrow, so this reads as a continuous quiet meadow when repeated across a large terrain.
+Grass side: same muted sage palette, top quarter sod with a gently stepped boundary and only two or three broad patches, preserving brown earth below.
+Leaves: somewhat deeper dusty forest/olive gray green base #4b6149, 6-8 broad interlocking angular leaf masses in close tones #435641, #576b50 and #63775a, with maximum four colors; each mass about 6-10 pixels across on a logical32x32 tile. No tiny flecks, neon leaf tips, black holes, bright lime highlights or dense veins. Fully opaque.
+Moss on stone: muted low-contrast sage patches with broad simple shapes.
+All edited vegetation surfaces must be crisp coarse pixel art, flat even illumination, large coherent color clusters, deliberately restrained detail. No gradients or blur. Avoid prominent focal shapes or full tile borders. Preserve original independent artwork. Do not use any existing game's textures. No labels, watermarks, gutters, perspective or added objects. Exact uniform 4x4 grid filling the entire square image.
